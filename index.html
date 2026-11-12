@@ -1122,7 +1122,7 @@
             <div class="brand">
                 <h1>BLACKSITE<span>-REDUX</span></h1>
                 <div class="rule"></div>
-                <div class="sub">CLASSIFIED COMBAT SIMULATION // BUILD 1.5.0</div>
+                <div class="sub">CLASSIFIED COMBAT SIMULATION // BUILD 1.5.1</div>
             </div>
             <div class="meta">OPERATOR <b>RECRUIT</b><br>POINTS <b id="menuPoints">0</b><br>MAP <b
                     id="menuMap">BLACKSITE</b><br><span>SYSTEM READY</span></div>
@@ -1311,6 +1311,7 @@
         const rand = (a = 0, b = 1) => a + Math.random() * (b - a);
         const randInt = (a, b) => Math.floor(rand(a, b + 1));
         const sign = v => v < 0 ? -1 : 1;
+        const pick = (arr) => arr[Math.floor(Math.random() * arr.length)]; // FIXED: Added missing function
         const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3();
         const _e1 = new THREE.Euler();
 
@@ -1486,7 +1487,6 @@
             }
             _build() {
                 const scene = this.scene, map = this.mapId;
-                // FIX: Fallback to blacksite if map is invalid
                 const themes = {
                     blacksite: { bg: 0x121e30, fog: 0x121e30, ambient: 0x7090b0, sun: 0xfff5e0, fill: 0x50a0ff, rim: 0xff9040, ember: 0xff7a1a, ice: 0x40d0ff, skyTop: 0x6070a0, skyBot: 0x2a3040 },
                     foundry: { bg: 0x2a1008, fog: 0x2a1008, ambient: 0xa07050, sun: 0xffe0b0, fill: 0xff7030, rim: 0xffb070, ember: 0xff9030, ice: 0xffc070, skyTop: 0xc08060, skyBot: 0x402020 },
@@ -2329,7 +2329,7 @@
             _teleport() {
                 const player = this.game.player, cam = this.game.camera;
                 const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-                const range = 15; // INCREASED RANGE
+                const range = 20; // INCREASED RANGE
 
                 // Check for walls in the way
                 let actualDist = range;
@@ -2343,20 +2343,20 @@
                 if (this.game.world.collidesBox(dest.x, dest.y + player.height / 2, dest.z, PLAYER_RADIUS, player.height / 2, PLAYER_RADIUS)) { dest = player.pos.clone(); dest.y += .5; }
 
                 // VFX Trail
-                const steps = 12;
+                const steps = 15;
                 for (let i = 0; i < steps; i++) {
                     const t = i / steps;
                     const trailPos = player.pos.clone().lerp(dest, t);
                     trailPos.y += player.height / 2;
                     setTimeout(() => {
                         if (this.game.effects) this.game.effects.teleportBurst(trailPos, 0x40c0ff);
-                    }, i * 15);
+                    }, i * 10);
                 }
 
                 this.game.effects.teleportBurst(player.pos.clone().add(new THREE.Vector3(0, 1, 0)), 0x40c0ff);
                 player.pos.copy(dest); player._tpFovT = 0;
                 this.game.effects.teleportBurst(dest.clone().add(new THREE.Vector3(0, 1, 0)), 0x40c0ff);
-                this.game.showFlash(0.35, 120); // Screen flash
+                this.game.showFlash(0.4, 150); // Screen flash
                 audio.teleport(); this.charges--; this.cooldown = this.cooldownMax;
                 this.game.ui.updateAbility(this.held, this.charges, this.maxCharges, 1);
             }
@@ -2598,15 +2598,15 @@
             }
             _loadData() {
                 const data = loadSave();
-                if (data.points !== undefined) this.points = data.points;
-                if (data.owned) this.armory.owned = new Set(data.owned);
-                if (data.sniperOwned !== undefined) { this.armory.sniperOwned = data.sniperOwned; if (data.sniperOwned) this.armory.loadout = ['rifle', 'sniper', 'shotgun', 'rocket']; }
-                if (data.selectedCamos) this.armory.selectedCamos = new Map(data.selectedCamos);
-                if (data.selectedMap) { this.selectedMap = data.selectedMap; document.getElementById('menuMap').textContent = data.selectedMap.toUpperCase(); }
-                if (data.baseFov) this.baseFov = data.baseFov;
-                if (data.masterVolume !== undefined) audio.setVolume(data.masterVolume);
-                if (data.sensitivity) this.input.sensitivity = data.sensitivity;
-                if (data.invertY) this.input.invertY = data.invertY;
+                if (typeof data.points === 'number') this.points = data.points;
+                if (Array.isArray(data.owned)) this.armory.owned = new Set(data.owned);
+                if (data.sniperOwned) { this.armory.sniperOwned = true; this.armory.loadout = ['rifle', 'sniper', 'shotgun', 'rocket']; }
+                if (Array.isArray(data.selectedCamos)) { try { this.armory.selectedCamos = new Map(data.selectedCamos); } catch (e) { } }
+                if (typeof data.selectedMap === 'string') { this.selectedMap = data.selectedMap; document.getElementById('menuMap').textContent = data.selectedMap.toUpperCase(); }
+                if (typeof data.baseFov === 'number') this.baseFov = data.baseFov;
+                if (typeof data.masterVolume === 'number') audio.setVolume(data.masterVolume);
+                if (typeof data.sensitivity === 'number') this.input.sensitivity = data.sensitivity;
+                if (data.invertY) this.input.invertY = true;
                 document.getElementById('menuPoints').textContent = this.points;
             }
             _saveData() {
@@ -2778,8 +2778,8 @@
                 ];
                 grid.innerHTML = '';
                 for (const it of items) {
-                    const owned = this.armory.owned.has(it.id);
-                    const equipped = it.type === 'camo' && this.armory.selectedCamos.get(it.kind) === it.camo;
+                    const owned = this.armory && this.armory.owned ? this.armory.owned.has(it.id) : false;
+                    const equipped = it.type === 'camo' && this.armory && this.armory.selectedCamos ? this.armory.selectedCamos.get(it.kind) === it.camo : false;
                     let card = document.createElement('div');
                     let label, action, disabled = false, cardClass = 'shopCard';
                     if (owned) cardClass += ' owned';
@@ -2809,7 +2809,7 @@
                             }
                         });
                     }
-                    grid.appendChild(card); // FIX: Removed the broken function append
+                    grid.appendChild(card);
                 }
             }
             _startGame(mode) {
