@@ -1122,7 +1122,7 @@
             <div class="brand">
                 <h1>BLACKSITE<span>-REDUX</span></h1>
                 <div class="rule"></div>
-                <div class="sub">CLASSIFIED COMBAT SIMULATION // BUILD 1.4.0</div>
+                <div class="sub">CLASSIFIED COMBAT SIMULATION // BUILD 1.5.0</div>
             </div>
             <div class="meta">OPERATOR <b>RECRUIT</b><br>POINTS <b id="menuPoints">0</b><br>MAP <b
                     id="menuMap">BLACKSITE</b><br><span>SYSTEM READY</span></div>
@@ -1191,8 +1191,7 @@
             <div class="hintline">CROSS-TAB SYNC · BROADCASTCHANNEL</div>
             <div class="mpHint">
                 <b>HOW IT WORKS:</b> This uses browser-local networking — works <b>across tabs on the same browser</b>
-                (even on GitHub Pages). Real cross-machine multiplayer needs an external WebSocket server, which static
-                hosts don't provide.<br><br>
+                (even on GitHub Pages). Real cross-machine multiplayer needs an external WebSocket server.<br><br>
                 <b>TO TEST:</b> Click <b>Host Private Server</b>, then <b>Open Test Tab</b> — a second window opens and
                 auto-joins your lobby.
             </div>
@@ -1328,43 +1327,20 @@
                 const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
                 try { this.ctx = new AC(); } catch (e) { return; }
                 this.master = this.ctx.createGain(); this.master.gain.value = this.volume; this.master.connect(this.ctx.destination);
-                // Compressor for punch
-                this.comp = this.ctx.createDynamicsCompressor();
-                this.comp.threshold.value = -18; this.comp.knee.value = 8; this.comp.ratio.value = 5;
-                this.comp.attack.value = .003; this.comp.release.value = .15;
-                this.comp.connect(this.master);
+                this.comp = this.ctx.createDynamicsCompressor(); this.comp.threshold.value = -18; this.comp.knee.value = 8; this.comp.ratio.value = 5; this.comp.attack.value = .003; this.comp.release.value = .15; this.comp.connect(this.master);
                 this.sfx = this.ctx.createGain(); this.sfx.gain.value = 1.0; this.sfx.connect(this.comp);
-                // Reverb
-                this.reverb = this.ctx.createConvolver();
-                this.reverb.buffer = this._impulse(1.8, 2.5);
-                this.reverbSend = this.ctx.createGain(); this.reverbSend.gain.value = .18;
-                this.reverbSend.connect(this.reverb);
-                this.reverb.connect(this.comp);
-                // Noise buffer
-                const len = Math.floor(this.ctx.sampleRate * 1.5);
-                const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
-                const d = buf.getChannelData(0);
-                for (let i = 0; i < len; i++)d[i] = Math.random() * 2 - 1;
-                this.noise = buf;
-                this.ready = true;
+                this.reverb = this.ctx.createConvolver(); this.reverb.buffer = this._impulse(1.8, 2.5);
+                this.reverbSend = this.ctx.createGain(); this.reverbSend.gain.value = .18; this.reverbSend.connect(this.reverb); this.reverb.connect(this.comp);
+                const len = Math.floor(this.ctx.sampleRate * 1.5); const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate); const d = buf.getChannelData(0);
+                for (let i = 0; i < len; i++)d[i] = Math.random() * 2 - 1; this.noise = buf; this.ready = true;
             }
-            _impulse(dur, decay) {
-                const len = this.ctx.sampleRate * dur;
-                const buf = this.ctx.createBuffer(2, len, this.ctx.sampleRate);
-                for (let ch = 0; ch < 2; ch++) {
-                    const d = buf.getChannelData(ch);
-                    for (let i = 0; i < len; i++)d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
-                }
-                return buf;
-            }
+            _impulse(dur, decay) { const len = this.ctx.sampleRate * dur; const buf = this.ctx.createBuffer(2, len, this.ctx.sampleRate); for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < len; i++)d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay); } return buf; }
             setVolume(v) { this.volume = v; if (this.master) this.master.gain.value = v; }
             _spatial(pos) { if (!pos) return { pan: 0, gain: 1 }; this._tmp.copy(pos).sub(this.listenerPos); const dist = this._tmp.length(); if (dist < .001) return { pan: 0, gain: 1 }; this._tmp.multiplyScalar(1 / dist); const pan = clamp(this._tmp.dot(this.listenerRight), -1, 1) * .85; const gain = clamp(1 / (1 + dist * .08), 0, 1); return { pan, gain }; }
-
             _noise({ dur = .2, gain = .4, freq = 1400, freqEnd = 200, q = 1, attack = .002, pan = 0, reverb = false, type = 'lowpass' }) {
                 if (!this.ready || gain < 0.005) return; const t = this.ctx.currentTime;
                 const src = this.ctx.createBufferSource(); src.buffer = this.noise; src.loop = true;
-                const flt = this.ctx.createBiquadFilter(); flt.type = type; flt.Q.value = q;
-                flt.frequency.setValueAtTime(Math.max(20, freq), t); flt.frequency.exponentialRampToValueAtTime(Math.max(20, freqEnd), t + dur);
+                const flt = this.ctx.createBiquadFilter(); flt.type = type; flt.Q.value = q; flt.frequency.setValueAtTime(Math.max(20, freq), t); flt.frequency.exponentialRampToValueAtTime(Math.max(20, freqEnd), t + dur);
                 const g = this.ctx.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(.0002, gain), t + attack); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
                 const p = this.ctx.createStereoPanner(); p.pan.value = clamp(pan, -1, 1);
                 src.connect(flt); flt.connect(g); g.connect(p); p.connect(this.sfx);
@@ -1373,8 +1349,7 @@
             }
             _sweep(f0, f1, dur, gain, type = 'sawtooth', pan = 0, reverb = false) {
                 if (!this.ready || gain < 0.005) return; const t = this.ctx.currentTime;
-                const osc = this.ctx.createOscillator(); osc.type = type;
-                osc.frequency.setValueAtTime(f0, t); osc.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+                const osc = this.ctx.createOscillator(); osc.type = type; osc.frequency.setValueAtTime(f0, t); osc.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
                 const g = this.ctx.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(.0002, gain), t + .003); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
                 const p = this.ctx.createStereoPanner(); p.pan.value = clamp(pan, -1, 1);
                 osc.connect(g); g.connect(p); p.connect(this.sfx);
@@ -1383,12 +1358,10 @@
             }
             _sub(freq, dur, gain, pan = 0) {
                 if (!this.ready || gain < 0.01) return; const t = this.ctx.currentTime;
-                const osc = this.ctx.createOscillator(); osc.type = 'sine';
-                osc.frequency.setValueAtTime(freq, t); osc.frequency.exponentialRampToValueAtTime(freq * .55, t + dur);
+                const osc = this.ctx.createOscillator(); osc.type = 'sine'; osc.frequency.setValueAtTime(freq, t); osc.frequency.exponentialRampToValueAtTime(freq * .55, t + dur);
                 const g = this.ctx.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(.0002, gain), t + .005); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
                 const p = this.ctx.createStereoPanner(); p.pan.value = clamp(pan, -1, 1);
-                osc.connect(g); g.connect(p); p.connect(this.sfx);
-                osc.start(t); osc.stop(t + dur + .03);
+                osc.connect(g); g.connect(p); p.connect(this.sfx); osc.start(t); osc.stop(t + dur + .03);
             }
             _click(gain, pan = 0) {
                 if (!this.ready || gain < 0.01) return; const t = this.ctx.currentTime;
@@ -1396,8 +1369,7 @@
                 const flt = this.ctx.createBiquadFilter(); flt.type = 'highpass'; flt.frequency.value = 3500;
                 const g = this.ctx.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + .001); g.gain.exponentialRampToValueAtTime(.0001, t + .018);
                 const p = this.ctx.createStereoPanner(); p.pan.value = clamp(pan, -1, 1);
-                src.connect(flt); flt.connect(g); g.connect(p); p.connect(this.sfx);
-                src.start(t); src.stop(t + .025);
+                src.connect(flt); flt.connect(g); g.connect(p); p.connect(this.sfx); src.start(t); src.stop(t + .025);
             }
             _tone({ freq = 440, freqEnd = null, dur = .15, gain = .2, type = 'sine', attack = .004, pan = 0 }) {
                 if (!this.ready || gain < 0.005) return; const t = this.ctx.currentTime;
@@ -1409,8 +1381,7 @@
             }
 
             shoot(kind, pos) {
-                const s = this._spatial(pos);
-                if (s.gain < 0.02) return;
+                const s = this._spatial(pos); if (s.gain < 0.02) return;
                 this._click(0.55 * s.gain, s.pan);
                 if (kind === 'rifle') {
                     this._noise({ dur: .09, gain: .42 * s.gain, freq: 5500, freqEnd: 400, q: .85, pan: s.pan });
@@ -1435,13 +1406,7 @@
                     this._noise({ dur: .8, gain: .22 * s.gain, freq: 900, freqEnd: 100, pan: s.pan, reverb: true, attack: .03 });
                 }
             }
-            explosion(pos) {
-                const s = this._spatial(pos);
-                this._noise({ dur: 1.0, gain: .85 * s.gain, freq: 2200, freqEnd: 50, q: .8, pan: s.pan });
-                this._sweep(110, 22, .9, .75 * s.gain, 'sawtooth', s.pan, true);
-                this._sub(40, .6, .55 * s.gain, s.pan);
-                this._sub(28, .8, .35 * s.gain, s.pan);
-            }
+            explosion(pos) { const s = this._spatial(pos); this._noise({ dur: 1.0, gain: .85 * s.gain, freq: 2200, freqEnd: 50, q: .8, pan: s.pan }); this._sweep(110, 22, .9, .75 * s.gain, 'sawtooth', s.pan, true); this._sub(40, .6, .55 * s.gain, s.pan); this._sub(28, .8, .35 * s.gain, s.pan); }
             hit(head) { if (head) { this._tone({ freq: 2400, freqEnd: 3200, dur: .08, gain: .3 }); this._tone({ freq: 3600, dur: .05, gain: .15, type: 'triangle' }); } else this._tone({ freq: 1100, freqEnd: 800, dur: .05, gain: .18, type: 'square' }); }
             kill() { this._tone({ freq: 660, dur: .08, gain: .22, type: 'triangle' }); setTimeout(() => this._tone({ freq: 990, dur: .12, gain: .22, type: 'triangle' }), 70); setTimeout(() => this._tone({ freq: 1320, dur: .18, gain: .18, type: 'triangle' }), 155); }
             reload() { this._noise({ dur: .06, gain: .2, freq: 2800, freqEnd: 1400, q: 4, type: 'bandpass' }); setTimeout(() => this._noise({ dur: .08, gain: .24, freq: 2000, freqEnd: 800, q: 5, type: 'bandpass' }), 150); }
@@ -1454,7 +1419,7 @@
             ui() { this._tone({ freq: 820, freqEnd: 1100, dur: .05, gain: .09, type: 'square' }); }
             waveStart() { this._sweep(280, 700, .5, .25, 'sawtooth'); setTimeout(() => this._sweep(550, 1100, .5, .2, 'sawtooth'), 200); }
             pad() { this._sweep(300, 1800, .25, .28, 'sine'); this._noise({ dur: .28, gain: .22, freq: 400, freqEnd: 5000, q: 2, type: 'bandpass' }); }
-            teleport() { this._sweep(2000, 100, .4, .4, 'sine'); this._noise({ dur: .45, gain: .45, freq: 9000, freqEnd: 200, q: 3, type: 'bandpass', reverb: true }); }
+            teleport() { this._sweep(2400, 80, .45, .45, 'sine'); this._noise({ dur: .5, gain: .5, freq: 10000, freqEnd: 150, q: 3, type: 'bandpass', reverb: true }); this._sub(120, .3, .4); }
             telekinesis() { this._sweep(50, 200, .7, .45, 'sawtooth', 0, true); this._noise({ dur: .9, gain: .35, freq: 250, freqEnd: 1600, q: 1.5, type: 'bandpass' }); }
             pickup() { this._tone({ freq: 660, freqEnd: 1400, dur: .14, gain: .26 }); setTimeout(() => this._tone({ freq: 990, freqEnd: 2000, dur: .2, gain: .22 }), 90); }
             countdown(go) { if (go) { this._sweep(400, 1400, .35, .4, 'sawtooth'); } else { this._tone({ freq: 880, dur: .14, gain: .32, type: 'square' }); } }
@@ -1521,16 +1486,17 @@
             }
             _build() {
                 const scene = this.scene, map = this.mapId;
-                const theme = {
+                // FIX: Fallback to blacksite if map is invalid
+                const themes = {
                     blacksite: { bg: 0x121e30, fog: 0x121e30, ambient: 0x7090b0, sun: 0xfff5e0, fill: 0x50a0ff, rim: 0xff9040, ember: 0xff7a1a, ice: 0x40d0ff, skyTop: 0x6070a0, skyBot: 0x2a3040 },
                     foundry: { bg: 0x2a1008, fog: 0x2a1008, ambient: 0xa07050, sun: 0xffe0b0, fill: 0xff7030, rim: 0xffb070, ember: 0xff9030, ice: 0xffc070, skyTop: 0xc08060, skyBot: 0x402020 },
                     abyss: { bg: 0x180a30, fog: 0x180a30, ambient: 0x8060a0, sun: 0xf0c0ff, fill: 0xb050ff, rim: 0x50d0ff, ember: 0xb050ff, ice: 0x60d0ff, skyTop: 0x9050c0, skyBot: 0x201030 },
-                }[map];
+                };
+                const theme = themes[map] || themes.blacksite;
 
                 scene.background = new THREE.Color(theme.bg);
                 scene.fog = new THREE.FogExp2(theme.fog, 0.009);
 
-                // MUCH BRIGHTER LIGHTING
                 scene.add(new THREE.AmbientLight(theme.ambient, 1.3));
                 scene.add(new THREE.HemisphereLight(theme.skyTop, theme.skyBot, 1.4));
                 const sun = new THREE.DirectionalLight(theme.sun, 2.4);
@@ -1547,7 +1513,6 @@
                 const iceA = new THREE.PointLight(theme.ice, 12, 35, 2); iceA.position.set(26, 2, 0); scene.add(iceA);
                 const iceB = new THREE.PointLight(theme.ice, 12, 35, 2); iceB.position.set(-26, 2, 0); scene.add(iceB);
                 const over = new THREE.PointLight(theme.fill, 8, 80, 2); over.position.set(0, 25, 0); scene.add(over);
-                // Corner fills
                 const c1 = new THREE.PointLight(theme.ember, 6, 25, 2); c1.position.set(-20, 8, -20); scene.add(c1);
                 const c2 = new THREE.PointLight(theme.ice, 6, 25, 2); c2.position.set(20, 8, 20); scene.add(c2);
 
@@ -1762,7 +1727,6 @@
                 const sprinting = input.down('ShiftLeft') && forward > 0 && this.onGround && !wantCrouch;
                 this._sprinting = sprinting;
 
-                // Slide: hold C while running fast (>8 m/s) → sustained slide
                 const hSpeedPre = Math.hypot(this.vel.x, this.vel.z);
                 if (wantCrouch && !this.sliding && this.onGround && this.slideCooldown <= 0 && hSpeedPre > 8) {
                     this.sliding = true;
@@ -1775,7 +1739,6 @@
                 }
                 this.crouching = wantCrouch || this.sliding;
                 const targetHeight = this.crouching ? CROUCH_HEIGHT : PLAYER_HEIGHT;
-                // Height transitions: verify we can stand
                 let nextHeight = damp(this.height, targetHeight, 18, dt);
                 if (targetHeight > this.height) {
                     const testH = nextHeight;
@@ -1796,7 +1759,6 @@
                 const speedMult = (this.speedBoostTimer > 0 ? 1.35 : 1) * (this.crouching ? .5 : 1) * (this.sliding ? 1.4 : 1);
                 const maxSpeed = baseSpeed * speedMult;
 
-                // TAP-JUMP: press Space to jump, buffer for landing
                 const spaceDown = input.down('Space');
                 const spacePress = input.hit('Space');
                 if (spacePress) { this._jumpBuffer = .15; this._spaceWasDown = true; }
@@ -1824,7 +1786,6 @@
                             this.vel.x += wishX * accelSpeed; this.vel.z += wishZ * accelSpeed;
                         }
                     }
-                    // Air friction cap
                     const hSpeedAir = Math.hypot(this.vel.x, this.vel.z);
                     if (hSpeedAir > MAX_H_SPEED) { const f = MAX_H_SPEED / hSpeedAir; this.vel.x *= f; this.vel.z *= f; }
                 }
@@ -1835,7 +1796,6 @@
                 if (landed) { if (this.vel.y < -6) { audio.land(); this._landShake = Math.min(1, -this.vel.y / 25); this.landTimer = .25; } this.vel.y = 0; this.onGround = true; }
                 else this.onGround = false;
 
-                // Safety: if somehow inside geometry, resolve out
                 if (this._collides(this.pos)) this._resolveOverlap();
 
                 for (const pad of this.world.jumpPads) {
@@ -1866,7 +1826,6 @@
                         if (!this._collides(test)) { this.pos.copy(test); return; }
                     }
                 }
-                // Last resort - teleport up
                 this.pos.y += 2;
             }
             _updateTpFov(dt) {
@@ -2042,12 +2001,8 @@
                 this.game.effects.tracer(origin.clone().addScaledVector(dir, .4), endPoint);
                 if (hitBot && hitBot.alive) {
                     const mult = hitPart === 'head' ? w.headMult : hitPart === 'limb' ? w.limbMult : 1.0;
-                    // SHOTGUN FALLOFF
                     let falloff = 1;
-                    if (w.falloff) {
-                        const hitDist = origin.distanceTo(endPoint);
-                        falloff = clamp(1 - (hitDist / w.range) * 1.5, .2, 1);
-                    }
+                    if (w.falloff) { const hitDist = origin.distanceTo(endPoint); falloff = clamp(1 - (hitDist / w.range) * 1.5, .2, 1); }
                     const dmg = w.damage * mult * falloff * (player.damageBoostTimer > 0 ? 1.4 : 1);
                     hitBot.takeDamage(dmg, hitPart, player);
                     this.game.effects.damageNumber(hitBot.getDamageNumberPos(hitPart), dmg, hitPart === 'head');
@@ -2119,7 +2074,7 @@
                     this.tkFreezeTimer -= dt;
                     const player = this.game.player;
                     const toPlayer = _v1.copy(player.pos).sub(this.pos); toPlayer.y = 0; toPlayer.normalize();
-                    this.yaw = Math.atan2(-toPlayer.x, -toPlayer.z); // FIXED facing
+                    this.yaw = Math.atan2(-toPlayer.x, -toPlayer.z);
                     this.mesh.position.set(this.pos.x, this.pos.y, this.pos.z);
                     this.mesh.rotation.y = this.yaw;
                     this.bodyMat.emissive = new THREE.Color(0x8000ff); this.bodyMat.emissiveIntensity = .8;
@@ -2131,7 +2086,7 @@
                 const player = this.game.player;
                 const toPlayer = _v1.copy(player.pos).sub(this.pos); const dist = toPlayer.length();
                 toPlayer.y = 0; toPlayer.normalize();
-                this.yaw = Math.atan2(-toPlayer.x, -toPlayer.z); // FIXED facing
+                this.yaw = Math.atan2(-toPlayer.x, -toPlayer.z);
                 const LOS = this._hasLOS(player.pos);
 
                 let wishX = 0, wishZ = 0;
@@ -2139,7 +2094,6 @@
                 else if (dist < 4) { wishX = -toPlayer.x; wishZ = -toPlayer.z; }
                 else { wishX = -toPlayer.z * .7; wishZ = toPlayer.x * .7; }
 
-                // Jump pad attraction
                 if (this.useJumpPad && dist > 10) {
                     let nearestPad = null, nearestD = 999;
                     for (const p of this.game.world.jumpPads) {
@@ -2152,7 +2106,6 @@
                     }
                 }
 
-                // EDGE DETECTION - don't walk off cliffs
                 if (this.onGround && Math.hypot(this.vel.x, this.vel.z) > 0.3) {
                     const vLen = Math.hypot(this.vel.x, this.vel.z) || 1;
                     if (!this._groundAhead(this.vel.x / vLen, this.vel.z / vLen)) {
@@ -2166,9 +2119,7 @@
                     this.vel.z = damp(this.vel.z, wishZ * 4.5 * slowMul, 12, dt);
                 }
                 const hSpeed = Math.hypot(this.vel.x, this.vel.z);
-                // BHOP for fast bots
                 if (this.useBhop && this.onGround && hSpeed > 4 && Math.random() < 0.025) { this.vel.y = JUMP_VEL; this.onGround = false; }
-                // ROCKET JUMP for rocket bots
                 if (this.weaponKind === 'rocket' && this.onGround && LOS && dist > 14 && Math.random() < 0.008) {
                     this.vel.y = JUMP_VEL * 1.6;
                     this.vel.x = toPlayer.x * 9; this.vel.z = toPlayer.z * 9;
@@ -2305,14 +2256,14 @@
                 this.game.cameraShake(.35);
             }
             teleportBurst(pos, color = 0xa040ff) {
-                for (let i = 0; i < 32; i++) {
-                    const geo = new THREE.SphereGeometry(rand(.03, .08), 4, 4);
+                for (let i = 0; i < 48; i++) {
+                    const geo = new THREE.SphereGeometry(rand(.04, .12), 5, 5);
                     const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1 });
-                    const m = new THREE.Mesh(geo, mat); m.position.copy(pos).add(new THREE.Vector3(rand(-.3, .3), rand(-.3, .3), rand(-.3, .3)));
+                    const m = new THREE.Mesh(geo, mat); m.position.copy(pos).add(new THREE.Vector3(rand(-.4, .4), rand(-.4, .4), rand(-.4, .4)));
                     this.game.scene.add(m);
-                    this.impacts.push({ mesh: m, vel: new THREE.Vector3(rand(-4, 4), rand(-2, 4), rand(-4, 4)), life: .4, maxLife: .4, geo, mat, gravity: 2 });
+                    this.impacts.push({ mesh: m, vel: new THREE.Vector3(rand(-8, 8), rand(-4, 8), rand(-8, 8)), life: rand(.4, .8), maxLife: .8, geo, mat, gravity: 2 });
                 }
-                const light = new THREE.PointLight(color, 10, 8, 2); light.position.copy(pos); this.game.scene.add(light);
+                const light = new THREE.PointLight(color, 15, 10, 2); light.position.copy(pos); this.game.scene.add(light);
                 setTimeout(() => { this.game.scene.remove(light); }, 300);
             }
             damageNumber(pos, amount, head) {
@@ -2331,7 +2282,7 @@
             }
         }
 
-        /* ==== ABILITY (condensed) ==== */
+        /* ==== ABILITY (UPGRADED TELEPORT) ==== */
         class AbilitySystem {
             constructor(game) { this.game = game; this.held = null; this.charges = 0; this.maxCharges = 3; this.cooldown = 0; this.cooldownMax = 0; this.pickupTimer = 60; this.pickupMesh = null; this.pickupPos = null; this.telekinesisZone = null; this.telekinesisTarget = null; this.telekinesisTimer = 0; }
             reset() { this.held = null; this.charges = 0; this.cooldown = 0; this.pickupTimer = 60; if (this.pickupMesh) { this.game.scene.remove(this.pickupMesh); this.pickupMesh = null; } if (this.telekinesisZone) { this.game.scene.remove(this.telekinesisZone); this.telekinesisZone = null; } this.telekinesisTarget = null; this.telekinesisTimer = 0; }
@@ -2378,12 +2329,34 @@
             _teleport() {
                 const player = this.game.player, cam = this.game.camera;
                 const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-                let dest = player.pos.clone().addScaledVector(dir, 8);
-                for (let dy = 0; dy < 6; dy += .3) { const test = dest.clone(); test.y -= dy; if (!this.game.world.collidesBox(test.x, test.y + player.height / 2, test.z, PLAYER_RADIUS, player.height / 2, PLAYER_RADIUS)) { if (dy > 0) { dest.y -= dy; break; } } }
+                const range = 15; // INCREASED RANGE
+
+                // Check for walls in the way
+                let actualDist = range;
+                const start = player.pos.clone().add(new THREE.Vector3(0, player.height / 2, 0));
+                const ray = new THREE.Raycaster(start, dir, 0, range);
+                const hits = ray.intersectObjects(this.game.world.meshes, false);
+                if (hits.length > 0) actualDist = Math.max(1, hits[0].distance - 0.5);
+
+                let dest = player.pos.clone().addScaledVector(dir, actualDist);
+                for (let dy = 0; dy < 8; dy += .3) { const test = dest.clone(); test.y -= dy; if (!this.game.world.collidesBox(test.x, test.y + player.height / 2, test.z, PLAYER_RADIUS, player.height / 2, PLAYER_RADIUS)) { if (dy > 0) { dest.y -= dy; break; } } }
                 if (this.game.world.collidesBox(dest.x, dest.y + player.height / 2, dest.z, PLAYER_RADIUS, player.height / 2, PLAYER_RADIUS)) { dest = player.pos.clone(); dest.y += .5; }
+
+                // VFX Trail
+                const steps = 12;
+                for (let i = 0; i < steps; i++) {
+                    const t = i / steps;
+                    const trailPos = player.pos.clone().lerp(dest, t);
+                    trailPos.y += player.height / 2;
+                    setTimeout(() => {
+                        if (this.game.effects) this.game.effects.teleportBurst(trailPos, 0x40c0ff);
+                    }, i * 15);
+                }
+
                 this.game.effects.teleportBurst(player.pos.clone().add(new THREE.Vector3(0, 1, 0)), 0x40c0ff);
                 player.pos.copy(dest); player._tpFovT = 0;
                 this.game.effects.teleportBurst(dest.clone().add(new THREE.Vector3(0, 1, 0)), 0x40c0ff);
+                this.game.showFlash(0.35, 120); // Screen flash
                 audio.teleport(); this.charges--; this.cooldown = this.cooldownMax;
                 this.game.ui.updateAbility(this.held, this.charges, this.maxCharges, 1);
             }
@@ -2434,7 +2407,7 @@
             showCountdown(n) { this.countdown.textContent = n; this.countdown.classList.remove('show'); void this.countdown.offsetWidth; this.countdown.classList.add('show'); }
         }
 
-        /* ==== MENU SCENE (WHITE PLAYER) ==== */
+        /* ==== MENU SCENE ==== */
         function buildMenuCharacter() {
             const g = new THREE.Group();
             const skinMat = new THREE.MeshStandardMaterial({ color: 0xe8ecf0, metalness: .35, roughness: .55 });
@@ -2556,7 +2529,6 @@
                 if (!this.sessionChannel) return;
                 this._lastBroadcast += dt;
                 if (this._lastBroadcast > .05) { this._lastBroadcast = 0; const st = this._localState(); if (st) this.sessionChannel.postMessage({ type: 'state', from: this.localId, state: st }); }
-                // Timeout stale peers
                 const now = Date.now();
                 for (const [id, state] of this.remotePlayers) {
                     if (state._lastSeen && now - state._lastSeen > 3000) { this.remotePlayers.delete(id); this._removeMesh(id); continue; }
@@ -2613,7 +2585,6 @@
                 this._loadData();
                 this._bindMenu(); this._bindPointerLock();
                 addEventListener('resize', () => this._onResize());
-                // Check URL for auto-join
                 const params = new URLSearchParams(location.search);
                 const joinCode = params.get('join');
                 if (joinCode && joinCode.length >= 6) {
@@ -2649,7 +2620,6 @@
                 $('setVol').addEventListener('input', e => { audio.setVolume(parseFloat(e.target.value)); $('setVolVal').textContent = Math.round(e.target.value * 100) + '%'; });
                 $('setFov').addEventListener('input', e => { $('setFovVal').textContent = e.target.value + '°'; });
                 $('setSens').addEventListener('input', e => { $('setSensVal').textContent = parseFloat(e.target.value).toFixed(2); });
-                // Tab ID display
                 $('tabId').textContent = this.multiplayer.localId;
             }
             _bindPointerLock() {
@@ -2765,7 +2735,6 @@
                     if (!isMe) { tr.addEventListener('click', () => { audio.ui(); this._joinServer(lobby.code); }); } else { tr.style.cursor = 'default'; }
                     body.appendChild(tr);
                 }
-                // Simulated servers (labeled)
                 const mockModes = ['Co-op Wave', 'Free-For-All'];
                 const mockMaps = ['Blacksite', 'Foundry', 'Abyss'];
                 for (let i = 0; i < 3; i++) {
@@ -2840,7 +2809,7 @@
                             }
                         });
                     }
-                    grid.appendChild(shopCard => { }); grid.appendChild(card);
+                    grid.appendChild(card); // FIX: Removed the broken function append
                 }
             }
             _startGame(mode) {
@@ -2883,7 +2852,6 @@
             }
             _teardown() {
                 if (this.bots) { this.bots.forEach(b => b.dispose()); this.bots = []; }
-                // Clean up all multiplayer meshes
                 if (this.multiplayer) {
                     for (const id of this.multiplayer.playerMeshes.keys()) this.multiplayer._removeMesh(id);
                     this.multiplayer.remotePlayers.clear();
@@ -2943,7 +2911,7 @@
             _pause() {
                 if (!this.running || this.paused) return;
                 if (!this._overPanelHidden()) return;
-                this.input.endFrame();  // FIX: clear stale escape press
+                this.input.endFrame();
                 this.paused = true;
                 document.getElementById('pausePanel').classList.remove('hidden');
                 this.ui.clickHint.classList.remove('show');
@@ -2955,7 +2923,7 @@
                 } else pauseBox.classList.add('hidden');
             }
             _resume() {
-                this.input.endFrame();  // FIX: prevent stale input re-triggering pause
+                this.input.endFrame();
                 document.getElementById('pausePanel').classList.add('hidden');
                 this.paused = false; this.ui.clickHint.classList.remove('show'); this.input.lock();
             }
@@ -3001,7 +2969,6 @@
 
                 if (this.impactFreeze > 0) { this.impactFreeze -= dt; dt *= 0.08; }
 
-                // CINEMATIC SPAWN with death-cam overhead view
                 if (this.countdown > 0) {
                     this.countdown -= dt;
                     if (this.countdown <= 0) {
@@ -3015,11 +2982,9 @@
                         this._wasCinematic = false;
                     } else {
                         this.lockInput = true;
-                        // Cinematic orbit - hide HUD and viewmodel
                         document.getElementById('hud').classList.add('cinematic');
                         if (this.player) this.player.viewModelRoot.visible = false;
                         this._wasCinematic = true;
-                        // Camera orbits over death pos
                         const dc = this.lastDeathPos || this.world.playerSpawn;
                         const t = 1 - this.countdown / 3.5;
                         const angle = t * Math.PI * .75;
@@ -3034,7 +2999,6 @@
                     }
                 }
 
-                // Training ability testing
                 if (this.mode === 'training' && this.abilitySystem) {
                     if (this.input.hit('KeyQ')) {
                         this.abilitySystem.held = this.abilitySystem.held === 'teleport' ? 'telekinesis' : 'teleport';
