@@ -934,7 +934,6 @@
                         if (data.type === 'LOBBY_STATE') {
                             this.players = data.players; this.maxPlayers = data.maxPlayers;
                             this.showWaitingLobby();
-                            // FIX: update lobby count for non-hosts
                             const list = Object.keys(this.players).map(id => ({ id, name: this.players[id].name, isHost: this.players[id].isHost }));
                             this.updateLobbyUI(list);
                         }
@@ -965,7 +964,6 @@
                 const playerId = this.peerToPlayer[peerId];
                 if (playerId) { delete this.players[playerId]; delete this.peerToPlayer[peerId]; }
                 delete this.connections[peerId];
-                // Remove from game
                 if (playerId) {
                     if (this.game.remoteMeshes[playerId]) { this.game.scene.remove(this.game.remoteMeshes[playerId]); delete this.game.remoteMeshes[playerId]; }
                     if (this.game._remoteDeathState) delete this.game._remoteDeathState[playerId];
@@ -1038,7 +1036,6 @@
                     if (this.players[data.playerId]) this.players[data.playerId].state = data.state;
                     if (this.isHost) this.broadcast(data);
                 } else if (data.type === 'SHOOT') {
-                    // FIX: ignore our own shots when they get relayed back
                     if (data.senderId && data.senderId === this.myId) return;
                     if (data.origin && data.to) {
                         this.game.effects.tracer(new THREE.Vector3(...data.origin), new THREE.Vector3(...data.to), data.color);
@@ -1052,7 +1049,6 @@
                     if (this.players[data.killerId]) this.players[data.killerId].kills = (this.players[data.killerId].kills || 0) + 1;
                     if (this.players[data.victimId]) this.players[data.victimId].deaths = (this.players[data.victimId].deaths || 0) + 1;
                     this.game.ui.addKillFeed(data.killerName + ' ✕ ' + data.victimName, data.headshot);
-                    // Medkit drop
                     if (data.deathPos && data.victimId !== this.myId) this.game.spawnMedkitDrop(new THREE.Vector3(data.deathPos[0], data.deathPos[1], data.deathPos[2]));
                     if (data.victimId === this.myId && this.game.player.alive) { this.game.player.health = 0; this.game.player.alive = false; this.game.onPlayerDied(); }
                     this.updateLeaderboard();
@@ -1067,7 +1063,7 @@
                 if (!this.matchStarted) return;
                 if (!this.game.paused) {
                     this._syncTimer += dt;
-                    if (this._syncTimer > 0.033) {  // 30Hz sync
+                    if (this._syncTimer > 0.033) {
                         this._syncTimer = 0;
                         const p = this.game.player;
                         if (p) {
@@ -1088,12 +1084,10 @@
                     }
                 }
 
-                // Heartbeat check - prune stale players
                 const now = performance.now();
                 for (const id in this._lastReceiveTime) {
                     if (id === this.myId) continue;
                     if (now - this._lastReceiveTime[id] > 12000) {
-                        // Player is stale, remove
                         if (this.isHost) {
                             const peerId = Object.keys(this.peerToPlayer).find(p => this.peerToPlayer[p] === id);
                             if (peerId) this.handleDisconnect(peerId);
@@ -1101,7 +1095,6 @@
                     }
                 }
 
-                // Render remote meshes with interpolation and animations
                 for (const id in this.players) {
                     if (id === this.myId) continue;
                     const pData = this.players[id];
@@ -1115,15 +1108,12 @@
                     }
                     const targetPos = new THREE.Vector3(...pData.state.pos);
                     const targetYaw = pData.state.yaw || 0;
-                    // Smooth interpolation
                     const lerpF = 1 - Math.exp(-18 * dt);
                     mesh.position.lerp(targetPos, lerpF);
-                    // Yaw with wrap
                     let yawD = targetYaw - mesh.rotation.y;
                     while (yawD > Math.PI) yawD -= Math.PI * 2;
                     while (yawD < -Math.PI) yawD += Math.PI * 2;
                     mesh.rotation.y += yawD * lerpF;
-                    // Death animation
                     const isAlive = pData.state.alive !== false;
                     if (!isAlive) {
                         mesh.rotation.z = damp(mesh.rotation.z, Math.PI / 2, 6, dt);
@@ -1131,9 +1121,7 @@
                     } else {
                         mesh.rotation.z = damp(mesh.rotation.z, 0, 8, dt);
                     }
-                    // Weapon check
                     if (mesh.userData.currentWeapon !== pData.state.weapon) this._updateRemoteWeapon(mesh, pData.state.weapon || 'rifle');
-                    // Animate
                     this._updateRemoteAnimation(mesh, pData.state, dt);
                 }
             }
@@ -1294,12 +1282,10 @@
                     this._addBox(60, wallH, 1, 0, wallH / 2, -30, mats.wall);
                     this._addBox(1, wallH, 60, 30, wallH / 2, 0, mats.wall);
                     this._addBox(1, wallH, 60, -30, wallH / 2, 0, mats.wall);
-                    // IMPROVED ABYSS: bigger platforms + more stepping stones
                     this._addBox(14, .4, 14, 0, 0, -18, mats.floor);
                     this._addBox(14, .4, 14, 0, 0, 18, mats.floor);
                     this._addBox(14, .4, 14, -18, 0, 0, mats.floor);
                     this._addBox(14, .4, 14, 18, 0, 0, mats.floor);
-                    // Stepping stones (lower height, easier jumps)
                     this._addBox(6, .4, 6, 0, 1, -10, mats.walk);
                     this._addBox(6, .4, 6, 0, 1, 10, mats.walk);
                     this._addBox(6, .4, 6, -10, 1, 0, mats.walk);
@@ -1308,32 +1294,25 @@
                     this._addBox(4, .4, 4, 13, .7, -13, mats.walk);
                     this._addBox(4, .4, 4, -13, .7, 13, mats.walk);
                     this._addBox(4, .4, 4, 13, .7, 13, mats.walk);
-                    // Central platform
                     this._addBox(10, .4, 10, 0, 3, 0, mats.walk);
-                    // Elevated corners
                     this._addBox(6, .4, 6, -14, 5.5, -14, mats.walk);
                     this._addBox(6, .4, 6, 14, 5.5, -14, mats.walk);
                     this._addBox(6, .4, 6, -14, 5.5, 14, mats.walk);
                     this._addBox(6, .4, 6, 14, 5.5, 14, mats.walk);
-                    // Top platform
                     this._addBox(5, .4, 5, 0, 8, 0, mats.walk);
-                    // Bridges
                     this._addBox(2, .2, 8, 0, 1.8, -13, mats.walk);
                     this._addBox(2, .2, 8, 0, 1.8, 13, mats.walk);
                     this._addBox(8, .2, 2, -13, 1.8, 0, mats.walk);
                     this._addBox(8, .2, 2, 13, 1.8, 0, mats.walk);
-                    // Jump pads
                     const pad = new THREE.Mesh(new THREE.BoxGeometry(3, .1, 3), mats.pad);
                     pad.position.set(0, 3.05, 0); pad.receiveShadow = true; scene.add(pad); this.meshes.push(pad);
                     this.jumpPads.push({ pos: new THREE.Vector3(0, 3.15, 0) });
-                    // Corner pads
                     for (const [px, pz] of [[-18, 0], [18, 0], [0, -18], [0, 18]]) {
                         const p2 = new THREE.Mesh(new THREE.BoxGeometry(2, .1, 2), mats.pad);
                         p2.position.set(px, .25, pz); p2.receiveShadow = true; scene.add(p2); this.meshes.push(p2);
                         this.jumpPads.push({ pos: new THREE.Vector3(px, .35, pz) });
                     }
                     this.playerSpawn.set(-18, .2, 0);
-                    // Safe platform spawn points for bots
                     this.botSpawns = [
                         new THREE.Vector3(-18, .2, -18), new THREE.Vector3(18, .2, -18),
                         new THREE.Vector3(-18, .2, 18), new THREE.Vector3(18, .2, 18),
@@ -1478,7 +1457,6 @@
                 this.medkitUseTimer = 0; this.deathAnimT = 0;
                 for (const w of this.weapons) if (w) this.armory.refill(w);
                 this.armory.equip(this, 0);
-                // Reset rotation for respawn
                 this.game.camera.rotation.set(0, 0, 0);
             }
             useMedkit() {
@@ -1497,7 +1475,6 @@
             update(dt) {
                 if (!this.alive) {
                     this.deathAnimT += dt;
-                    // Camera falls
                     this.game.camera.position.y = damp(this.game.camera.position.y, this.pos.y + 0.3, 4, dt);
                     this.game.camera.rotation.z = damp(this.game.camera.rotation.z, 0.9, 3, dt);
                     this.game.camera.rotation.x = damp(this.game.camera.rotation.x, -0.5, 3, dt);
@@ -1576,7 +1553,6 @@
                         if (this.sliding) this.sliding = false;
                         audio.jump();
                     } else if (this.sliding) {
-                        // FIX: allow strafing while sliding
                         if (hasWish) {
                             this.vel.x += wishX * dt * 16;
                             this.vel.z += wishZ * dt * 16;
@@ -1673,7 +1649,7 @@
                         const color = CAMO_COLORS[weapon.camo] || CAMO_COLORS['default'];
                         this.game.network.broadcast({
                             type: 'SHOOT',
-                            senderId: this.game.network.myId, // FIX: prevent double render
+                            senderId: this.game.network.myId,
                             origin: [cam.position.x, cam.position.y, cam.position.z],
                             to: [to.x, to.y, to.z],
                             color: color, weapon: weapon.kind
@@ -1750,7 +1726,7 @@
         /* ===== VIEWMODEL ===== */
         function buildWeaponMesh(kind, camo = 'default') {
             const g = new THREE.Group();
-            const tex = getCamoTexture(camo);
+            const tex = generateCamoTexture(camo);
             const bodyMat = new THREE.MeshStandardMaterial({ map: tex, color: 0xffffff, metalness: .85, roughness: .35 });
             const darkMat = new THREE.MeshStandardMaterial({ color: 0x0a0d11, metalness: .7, roughness: .5 });
             const accentMat = new THREE.MeshStandardMaterial({ color: 0x1a1f26, emissive: CAMO_COLORS[camo], emissiveIntensity: 1.5, metalness: .4, roughness: .4 });
@@ -1934,7 +1910,6 @@
             update(dt) {
                 if (!this.alive) { this.deathTimer -= dt; this.mesh.rotation.z = damp(this.mesh.rotation.z, Math.PI / 2, 8, dt); this.mesh.position.y -= dt * 1.5; return; }
 
-                // FIX: Abyss fall recovery - don't die from void
                 if (this.pos.y < -8) {
                     const safe = this.game.world.botSpawns[Math.floor(Math.random() * this.game.world.botSpawns.length)];
                     this.pos.copy(safe);
@@ -1964,7 +1939,6 @@
                 else if (dist < 4) { wishX = -toPlayer.x; wishZ = -toPlayer.z; }
                 else { wishX = -toPlayer.z * .7; wishZ = toPlayer.x * .7; }
 
-                // JUMP PAD NAVIGATION
                 if (this.useJumpPad && dist > 8) {
                     let nearestPad = null, nearestD = 999;
                     for (const p of this.game.world.jumpPads) {
@@ -1977,15 +1951,12 @@
                     }
                 }
 
-                // ABYSS: Aggressive jump usage + ground checks
                 if (this.isAbyss && this.onGround) {
                     const vLen = Math.hypot(this.vel.x, this.vel.z) || 1;
                     if (!this._groundAhead(this.vel.x / vLen, this.vel.z / vLen)) {
-                        // Jump! Better jump velocity for abyss
                         this.vel.y = JUMP_VEL * 1.15;
                         this.onGround = false;
                     } else if (Math.random() < 0.02) {
-                        // Random bhop-like jumps on abyss
                         this.vel.y = JUMP_VEL * 1.1;
                         this.onGround = false;
                     }
@@ -2162,12 +2133,11 @@
                 for (let attempt = 0; attempt < 30; attempt++) {
                     const px = rand(-22, 22), pz = rand(-22, 22);
                     const groundY = this.game.world.groundAt(px, pz);
-                    if (groundY === null) continue; // no ground under - skip (abyss)
+                    if (groundY === null) continue;
                     if (groundY < -5) continue;
                     if (this.game.world.collidesBox(px, groundY + 1, pz, .5, .5, .5)) continue;
                     return new THREE.Vector3(px, groundY + 0.8, pz);
                 }
-                // Fallback: use player spawn
                 const fallback = this.game.world.playerSpawn.clone();
                 return fallback;
             }
@@ -2231,13 +2201,11 @@
                 if (hits.length > 0) actualDist = Math.max(1, hits[0].distance - 0.5);
                 let dest = player.pos.clone().addScaledVector(dir, actualDist);
 
-                // FIX: validate destination
                 let isValid = true;
                 if (dest.y < -5) isValid = false;
                 if (this.game.world.collidesBox(dest.x, dest.y + player.height / 2, dest.z, PLAYER_RADIUS, player.height / 2, PLAYER_RADIUS)) isValid = false;
 
                 if (!isValid) {
-                    // Find nearest safe point
                     let best = null, bestD = 999;
                     for (let r = 0.5; r <= 6; r += 0.5) {
                         for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) {
@@ -2255,10 +2223,9 @@
                         if (best) break;
                     }
                     if (best) dest = best;
-                    else dest = player.pos.clone(); // Safe fallback
+                    else dest = player.pos.clone(); 
                 }
 
-                // Extra: if still low, raycast up
                 if (dest.y < -3) {
                     const gY = this.game.world.groundAt(dest.x, dest.z);
                     if (gY !== null && gY > -5) dest.y = gY;
@@ -2749,7 +2716,6 @@
                 for (let i = 0; i < count; i++) {
                     const spawn = this.world.botSpawns[Math.floor(Math.random() * this.world.botSpawns.length)].clone();
                     spawn.x += rand(-1.5, 1.5); spawn.z += rand(-1.5, 1.5);
-                    // Ensure spawn is on solid ground
                     const gY = this.world.groundAt(spawn.x, spawn.z);
                     if (gY !== null) spawn.y = gY;
                     const bot = new Bot(this, spawn);
@@ -2782,7 +2748,6 @@
                 this.lastDeathPos = this.player.pos.clone();
                 if (this.isMultiplayer) {
                     this.ui.showCenterMsg('ELIMINATED', 'RESPAWNING IN 3s', 2500);
-                    // Drop a medkit for others
                     this.spawnMedkitDrop(this.player.pos.clone());
                     setTimeout(() => {
                         if (this.running && this.isMultiplayer) {
@@ -2870,17 +2835,14 @@
 
             update(dt) {
                 if (this.paused) {
-                    // FIX: In multiplayer, only freeze local player. World still runs.
                     if (this.isMultiplayer) {
                         if (this.world) this.world.update(dt);
                         if (this.effects) this.effects.update(dt);
                         if (this.network) this.network.update(dt);
                         if (this.abilitySystem) this.abilitySystem.update(dt);
-                        // Medkit drops continue to update & be pickable by others (but not by us while paused)
                         for (let i = this.medkitDrops.length - 1; i >= 0; i--) {
                             if (!this.medkitDrops[i].update(dt)) { this.medkitDrops[i].dispose(); this.medkitDrops.splice(i, 1); }
                         }
-                        // Bots still update (enemies for co-op wave)
                         for (const b of this.bots) b.update(dt);
                         this.bots = this.bots.filter(b => { if (!b.alive && b.deathTimer <= 0) { b.dispose(); return false; } return true; });
                     }
@@ -2946,7 +2908,6 @@
                 if (!this.lockInput) for (const b of this.bots) b.update(dt);
                 this.bots = this.bots.filter(b => { if (!b.alive && b.deathTimer <= 0) { b.dispose(); return false; } return true; });
 
-                // Medkit drops update + pickup
                 for (let i = this.medkitDrops.length - 1; i >= 0; i--) {
                     const drop = this.medkitDrops[i];
                     const alive = drop.update(dt);
