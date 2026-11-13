@@ -50,7 +50,6 @@
             color: var(--accent)
         }
 
-        /* Flashbang Overlay */
         #flashOverlay {
             position: fixed;
             inset: 0;
@@ -1560,7 +1559,7 @@
             <div class="brand">
                 <h1>BLACKSITE<span>-REDUX</span></h1>
                 <div class="rule"></div>
-                <div class="sub">CLASSIFIED COMBAT SIMULATION // BUILD 2.0.0</div>
+                <div class="sub">CLASSIFIED COMBAT SIMULATION // BUILD 2.1.0</div>
             </div>
             <div class="meta">OPERATOR <b id="menuName">RECRUIT</b><br>POINTS <b id="menuPoints">0</b><br>MAP <b
                     id="menuMap">BLACKSITE</b><br><span>SYSTEM READY</span></div>
@@ -1580,8 +1579,7 @@
         </div>
         <div class="footbar">
             <div>WASD MOVE · <b>SHIFT</b> SPRINT · <b>SPACE</b> TAP-JUMP · <b>C</b> SLIDE · <b>MOUSE</b> AIM/FIRE ·
-                <b>F</b> MEDKIT · <b>G</b> FLASHBANG
-            </div>
+                <b>F</b> MEDKIT · <b>G</b> FLASHBANG</div>
             <div><b>1-5</b> WEAPONS · <b>R</b> RELOAD · <b>E</b> ABILITY · <b>ESC</b> PAUSE · <b>TAB</b> SCOREBOARD
             </div>
         </div>
@@ -1738,6 +1736,10 @@
             <h2>SETTINGS</h2>
             <div class="hintline">INPUT &amp; PRESENTATION</div>
             <div class="settingsGrid">
+                <label>DISPLAY NAME</label><input id="setName" class="codeInput" type="text" maxlength="12"
+                    style="padding:6px; font-size:12px;" /><span></span>
+                <label>PLAYER SKIN</label><input id="setSkin" type="color" value="#e8ecf0" /><span></span>
+                <label>UI COLOR</label><input id="setColor" type="color" value="#ff7a1a" /><span></span>
                 <label>MASTER VOLUME</label><input id="setVol" type="range" min="0" max="1" step="0.02"
                     value="0.6" /><span id="setVolVal">60%</span>
                 <label>MUSIC VOLUME</label><input id="setMusicVol" type="range" min="0" max="1" step="0.02"
@@ -1747,7 +1749,6 @@
                 <label>MOUSE SENSITIVITY</label><input id="setSens" type="range" min="0.3" max="3" step="0.05"
                     value="1" /><span id="setSensVal">1.00</span>
                 <label>INVERT Y</label><input id="setInv" type="checkbox" /><span></span>
-                <label>UI COLOR</label><input id="setColor" type="color" value="#ff7a1a" /><span></span>
             </div>
             <div class="row" style="margin-top:26px;justify-content:space-between">
                 <div>
@@ -1870,7 +1871,7 @@
                 unlockedCamos: ['rifle:default', 'shotgun:default', 'rocket:default', 'sniper:default', 'knife:default'],
                 equippedLoadout: ['rifle', 'shotgun', 'rocket', 'knife'],
                 equippedCamos: { rifle: 'default', shotgun: 'default', rocket: 'default', sniper: 'default', knife: 'default' },
-                settings: { volume: 0.6, musicVolume: 0.4, fov: 90, sensitivity: 1, invertY: false, uiColor: '#ff7a1a' },
+                settings: { volume: 0.6, musicVolume: 0.4, fov: 90, sensitivity: 1, invertY: false, uiColor: '#ff7a1a', skinColor: '#e8ecf0' },
                 playerName: 'OPERATOR-' + Math.floor(Math.random() * 999)
             },
             load() {
@@ -1883,15 +1884,14 @@
                         this.data = { ...this.data, ...parsed };
                         if (!this.data.equippedCamos) this.data.equippedCamos = { rifle: 'default', shotgun: 'default', rocket: 'default', sniper: 'default', knife: 'default' };
                         if (!this.data.equippedLoadout) this.data.equippedLoadout = ['rifle', 'shotgun', 'rocket', 'knife'];
-                        if (!this.data.settings) this.data.settings = { volume: 0.6, musicVolume: 0.4, fov: 90, sensitivity: 1, invertY: false, uiColor: '#ff7a1a' };
+                        if (!this.data.settings) this.data.settings = { volume: 0.6, musicVolume: 0.4, fov: 90, sensitivity: 1, invertY: false, uiColor: '#ff7a1a', skinColor: '#e8ecf0' };
                         if (!this.data.settings.uiColor) this.data.settings.uiColor = '#ff7a1a';
+                        if (!this.data.settings.skinColor) this.data.settings.skinColor = '#e8ecf0';
                         if (!this.data.playerName) this.data.playerName = 'OPERATOR-' + Math.floor(Math.random() * 999);
 
-                        // Ensure new weapons are added if missing
                         if (!this.data.unlockedWeapons.includes('knife')) this.data.unlockedWeapons.push('knife');
                         if (!this.data.unlockedCamos.includes('knife:default')) this.data.unlockedCamos.push('knife:default');
 
-                        // Apply UI Color
                         document.documentElement.style.setProperty('--accent', this.data.settings.uiColor);
                     }
                 } catch (e) { console.error('Save load error', e); }
@@ -2012,6 +2012,7 @@
             countdown(go) { if (go) this._sweep(400, 1400, .35, .4, 'sawtooth'); else this._tone({ freq: 880, dur: .14, gain: .32, type: 'square' }); }
             perfect() { this._sweep(300, 1400, .7, .55, 'sawtooth', 0, true); this._noise({ dur: .5, gain: .5, freq: 2000, freqEnd: 5000, q: 2, type: 'bandpass' }); this._sub(55, .3, .4); }
             flashbang() { this._noise({ dur: 1.5, gain: .8, freq: 8000, freqEnd: 1000, q: .5, type: 'bandpass', reverb: true }); this._sweep(1000, 100, 1.0, .5, 'sine'); }
+            throw() { this._sweep(400, 200, .2, .2, 'sine'); }
         }
         const audio = new AudioEngine();
 
@@ -2133,7 +2134,7 @@
                     if (document.activeElement && ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
                     if (e.code === 'Tab') { e.preventDefault(); if (this.onTab) this.onTab(true); return; }
                     if (e.repeat) return; const c = e.code; this.keys.add(c); this.pressed.add(c);
-                    if (['Space', 'KeyR', 'KeyF', 'KeyE', 'KeyQ', 'KeyG', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5'].includes(c)) e.preventDefault();
+                    if (['Space', 'KeyR', 'KeyF', 'KeyE', 'KeyQ', 'KeyG', 'KeyB', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5'].includes(c)) e.preventDefault();
                 });
                 addEventListener('keyup', e => { if (e.code === 'Tab') { if (this.onTab) this.onTab(false); return; } this.keys.delete(e.code); });
                 addEventListener('blur', () => { this.keys.clear(); this.left = this.right = false; });
@@ -2160,9 +2161,9 @@
         const WEAPON_DEFS = {
             rifle: { kind: 'rifle', name: 'MK-7 CARBINE', auto: true, rpm: 620, mag: 30, reserve: 240, reloadTime: 1.9, damage: 24, headMult: 2.5, limbMult: .75, spreadHip: .025, spreadAds: .004, recoil: 0.7, range: 200, sound: 'rifle', price: 0 },
             shotgun: { kind: 'shotgun', name: 'BREACHER 12G', auto: false, rpm: 75, mag: 6, reserve: 36, reloadTime: 2.6, damage: 22, pellets: 8, headMult: 2.0, limbMult: .75, spreadHip: .09, spreadAds: .05, recoil: 1.5, range: 30, sound: 'shotgun', falloff: true, price: 0, shellReload: true },
-            sniper: { kind: 'sniper', name: 'LONGBOW .50', auto: false, rpm: 35, mag: 5, reserve: 30, reloadTime: 3.2, damage: 95, headMult: 5.0, limbMult: .75, spreadHip: .06, spreadAds: 0, recoil: 3.0, range: 1000, sound: 'sniper', boltTime: .55, price: 800 },
+            sniper: { kind: 'sniper', name: 'LONGBOW .50', auto: false, rpm: 35, mag: 5, reserve: 30, reloadTime: 3.2, damage: 100, headMult: 10.0, limbMult: .75, spreadHip: .06, spreadAds: 0, recoil: 3.0, range: 1000, sound: 'sniper', boltTime: .55, price: 800 },
             rocket: { kind: 'rocket', name: 'HAVOC RL', auto: false, rpm: 55, mag: 3, reserve: 9, reloadTime: 2.8, damage: 120, splashDamage: 55, splashRadius: 5.5, spreadHip: .008, spreadAds: .003, recoil: 2.0, range: 300, sound: 'rocket', projectile: true, rocketSpeed: 42, price: 0 },
-            knife: { kind: 'knife', name: 'TACTICAL KARAMBIT', auto: false, rpm: 120, mag: 1, reserve: 1, reloadTime: 0, damage: 50, headMult: 1, limbMult: 1, spreadHip: 0, spreadAds: 0, recoil: 0, range: 2.5, sound: 'knife', price: 0 }
+            knife: { kind: 'knife', name: 'TACTICAL KARAMBIT', auto: false, rpm: 120, mag: 1, reserve: 1, reloadTime: 0, damage: 50, headMult: 1, limbMult: 1, spreadHip: 0, spreadAds: 0, recoil: 0, range: 3.0, sound: 'knife', price: 0 }
         };
 
         /* ===== NETWORK MANAGER ===== */
@@ -2235,7 +2236,6 @@
                             return;
                         }
                         if (data.type === 'HANDSHAKE_JOIN') {
-                            // FIX: Player limit bug
                             if (Object.keys(this.players).length >= this.maxPlayers) {
                                 try { conn.send({ type: 'ERROR_ROOM_FULL' }); } catch (e) { }
                                 setTimeout(() => { try { conn.close(); } catch (e) { } }, 500); return;
@@ -2384,6 +2384,11 @@
                 } else if (data.type === 'HIT') {
                     if (data.targetId === this.myId) { this.game.lastAttacker = data.attackerId || 'Unknown'; if (this.game.player && this.game.player.alive) this.game.player.onHit(data.damage); }
                     if (this.isHost) this.broadcast(data);
+                } else if (data.type === 'HEAL') {
+                    if (data.targetId === this.myId && this.game.player && this.game.player.alive) {
+                        this.game.player.health = Math.min(this.game.player.maxHealth, this.game.player.health + data.amount);
+                    }
+                    if (this.isHost) this.broadcast(data);
                 } else if (data.type === 'KILL') {
                     if (this.players[data.killerId]) this.players[data.killerId].kills = (this.players[data.killerId].kills || 0) + 1;
                     if (this.players[data.victimId]) this.players[data.victimId].deaths = (this.players[data.victimId].deaths || 0) + 1;
@@ -2411,7 +2416,6 @@
 
             update(dt) {
                 if (!this.matchStarted) return;
-                // FIX: Pause invisibility bug. Always send state.
                 this._syncTimer += dt;
                 if (this._syncTimer > 0.033) {
                     this._syncTimer = 0;
@@ -2473,7 +2477,6 @@
                         mesh.rotation.z = damp(mesh.rotation.z, 0, 8, dt);
                     }
 
-                    // TK Freeze visual
                     if (pData.state.tkFreezeTimer > 0) {
                         mesh.rotation.x = Math.sin(performance.now() * .01) * 0.1;
                         mesh.position.y += Math.sin(performance.now() * .01) * 0.05;
@@ -2870,7 +2873,7 @@
                 this.game.ui.showCenterMsg('MEDKIT USED', '+' + Math.round(this.health - before) + ' HP', 1000);
                 return true;
             }
-            update(dt) {
+            update(dt, isPaused = false) {
                 if (!this.alive) {
                     this.deathAnimT += dt;
                     this.game.camera.position.y = damp(this.game.camera.position.y, this.pos.y + 0.3, 4, dt);
@@ -2887,7 +2890,13 @@
                 if (this.medkitUseTimer > 0) this.medkitUseTimer -= dt;
                 if (this.perfectComboTimer > 0) { this.perfectComboTimer -= dt; if (this.perfectComboTimer <= 0) this.perfectStack = 0; }
                 if (this._jumpBuffer > 0) this._jumpBuffer -= dt;
-                this._look(dt); this._move(dt); this._shoot(dt); this._updateViewModel(dt); this._buffTimers(dt); this._updateTpFov(dt);
+
+                if (!isPaused) { this._look(dt); this._shoot(dt); }
+                this._move(dt, isPaused);
+                this._updateViewModel(dt);
+                this._buffTimers(dt);
+                if (!isPaused) this._updateTpFov(dt);
+
                 if (this.pos.y < this.world.killY) this.game.onPlayerFell();
             }
             _look(dt) {
@@ -2908,15 +2917,16 @@
                 this.swayX = damp(this.swayX, clamp(-this.input.mouseDX * .0006, -.05, .05), 12, 1 / 60);
                 this.swayY = damp(this.swayY, clamp(this.input.mouseDY * .0006, -.05, .05), 12, 1 / 60);
             }
-            _move(dt) {
-                const input = this.input;
+            _move(dt, isPaused) {
+                const input = isPaused ? { down: () => false, hit: () => false } : this.input;
                 const wantCrouch = input.down('KeyC') || input.down('ControlLeft');
                 const forward = (input.down('KeyW') ? 1 : 0) - (input.down('KeyS') ? 1 : 0);
                 const strafe = (input.down('KeyD') ? 1 : 0) - (input.down('KeyA') ? 1 : 0);
                 const sprinting = input.down('ShiftLeft') && forward > 0 && this.onGround && !wantCrouch;
                 this._sprinting = sprinting;
                 const hSpeedPre = Math.hypot(this.vel.x, this.vel.z);
-                if (wantCrouch && !this.sliding && this.onGround && this.slideCooldown <= 0 && hSpeedPre > 8) {
+
+                if (wantCrouch && !this.sliding && this.onGround && this.slideCooldown <= 0 && hSpeedPre > 8 && !isPaused) {
                     this.sliding = true;
                     const boost = Math.min(1.35, 1.0 + hSpeedPre * .02);
                     this.vel.x *= boost; this.vel.z *= boost; audio.slide();
@@ -2932,6 +2942,7 @@
                     if (this.world.collidesBox(this.pos.x, this.pos.y + nextHeight / 2, this.pos.z, PLAYER_RADIUS, nextHeight / 2, PLAYER_RADIUS)) { nextHeight = this.height; this.crouching = true; }
                 }
                 this.height = nextHeight;
+
                 let wishX = 0, wishZ = 0;
                 if (forward || strafe) {
                     const cos = Math.cos(this.yaw), sin = Math.sin(this.yaw);
@@ -2942,24 +2953,20 @@
                 const baseSpeed = sprinting ? 15 : 7.5;
                 const speedMult = (this.speedBoostTimer > 0 ? 1.35 : 1) * (this.crouching ? .5 : 1) * (this.sliding ? 1.4 : 1);
                 const maxSpeed = baseSpeed * speedMult;
+
                 const spaceDown = input.down('Space');
                 const spacePress = input.hit('Space');
                 if (spacePress) { this._jumpBuffer = .15; this._spaceWasDown = true; }
                 if (!spaceDown) this._spaceWasDown = false;
+
                 if (this.onGround) {
-                    if (this._jumpBuffer > 0) {
+                    if (this._jumpBuffer > 0 && !isPaused) {
                         this.vel.y = JUMP_VEL; this.onGround = false; this._jumpBuffer = 0;
                         if (this.sliding) this.sliding = false;
                         audio.jump();
                     } else if (this.sliding) {
-                        if (hasWish) {
-                            this.vel.x += wishX * dt * 20;
-                            this.vel.z += wishZ * dt * 20;
-                            const hs = Math.hypot(this.vel.x, this.vel.z);
-                            const maxSlide = maxSpeed * 1.6;
-                            if (hs > maxSlide) { this.vel.x *= maxSlide / hs; this.vel.z *= maxSlide / hs; }
-                        }
-                        this.vel.x *= 1 - dt * 0.2; // Even lower friction
+                        // Removed strafing during slide
+                        this.vel.x *= 1 - dt * 0.2;
                         this.vel.z *= 1 - dt * 0.2;
                     } else {
                         const accel = 95;
@@ -2979,6 +2986,7 @@
                     const hsAir = Math.hypot(this.vel.x, this.vel.z);
                     if (hsAir > MAX_H_SPEED) { const f = MAX_H_SPEED / hsAir; this.vel.x *= f; this.vel.z *= f; }
                 }
+
                 this.vel.y -= GRAVITY * dt; if (this.vel.y < -55) this.vel.y = -55;
                 this._moveAxis('x', this.vel.x * dt); this._moveAxis('z', this.vel.z * dt);
                 const landed = this._moveAxis('y', this.vel.y * dt);
@@ -3002,7 +3010,10 @@
                 this.landTimer = Math.max(0, this.landTimer - dt);
                 const landDip = this.landTimer > 0 ? Math.sin((1 - this.landTimer / .25) * Math.PI) * this._landShake * .15 : 0;
                 this._landShake = damp(this._landShake, 0, 8, dt);
-                cam.position.set(this.pos.x, this.pos.y + eye + headBob - landDip, this.pos.z);
+
+                if (this.game.finisherTimer <= 0) {
+                    cam.position.set(this.pos.x, this.pos.y + eye + headBob - landDip, this.pos.z);
+                }
             }
             _resolveOverlap() {
                 for (let r = .2; r < 4; r += .15) {
@@ -3040,6 +3051,11 @@
                 const weapon = this.currentWeapon; if (!weapon) return;
 
                 if (this.input.hit('KeyG')) this.game.throwFlashbang();
+                if (this.input.hit('KeyB') && this.game.mode === 'training') {
+                    const spawn = this.game.world.botSpawns[0].clone();
+                    this.game.bots.push(new Bot(this.game, spawn));
+                    this.game.ui.showCenterMsg('DUMMY SPAWNED', '', 800);
+                }
 
                 let shouldFire = weapon.auto ? this.input.left : (this.input.left && !weapon._prevLeft);
                 weapon._prevLeft = this.input.left;
@@ -3166,8 +3182,8 @@
                 addHands(g, .06, -.06, -.25, 0, -.02, -.75);
             } else if (kind === 'knife') {
                 const metal = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 1.0, roughness: 0.2 });
-                addBox(g, .01, .08, .3, 0, .02, -.2, metal); // Blade
-                addBox(g, .04, .04, .15, 0, -.02, -.05, darkMat); // Handle
+                addBox(g, .01, .08, .3, 0, .02, -.2, metal);
+                addBox(g, .04, .04, .15, 0, -.02, -.05, darkMat);
                 addHands(g, .02, -.05, -.1, 0, -.02, -.1);
             }
             g.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; o.frustumCulled = false; } });
@@ -3209,7 +3225,6 @@
                 if (idx < 0 || idx >= player.weapons.length) return;
                 if (idx === player.currentWeaponIdx) return;
 
-                // Cancel reload
                 const current = player.currentWeapon;
                 if (current && current.reloading) { current.reloading = false; this.game.ui.showReloadBar(false, 0); }
 
@@ -3224,13 +3239,11 @@
             tryFire(player, w) {
                 if (!w || w.fireCooldown > 0) return;
 
-                // Shell reload logic: can shoot even if reloading, but interrupts it
                 if (w.reloading && !w.shellReload) return;
                 if (w.mag <= 0) { audio.empty(); this.tryReload(player, w); return; }
 
                 if (w.reloading && w.shellReload) {
                     w.reloading = false; this.game.ui.showReloadBar(false, 0);
-                    // Give one shell immediately on interrupt for smoothness
                     if (w.reserve > 0) { w.mag++; w.reserve--; }
                 }
 
@@ -3248,7 +3261,6 @@
                 else if (w.kind === 'rocket') this._fireRocket(player, w, tc);
                 else if (w.kind === 'knife') {
                     const hitBot = this._fireRay(player, w, 0, tc);
-                    // Melee logic handled in _fireRay
                 }
                 else { this._fireRay(player, w, spread, tc); if (w.kind === 'sniper') { w.boltTimer = WEAPON_DEFS.sniper.boltTime || .55; audio.reload(); } }
                 this._syncUI(player);
@@ -3270,7 +3282,6 @@
                 }
 
                 if (w.kind === 'knife') {
-                    // Melee check
                     let victim = null;
                     let minDist = 3.0;
                     for (const b of this.game.bots) {
@@ -3283,7 +3294,6 @@
                         }
                     }
 
-                    // Check remote players
                     if (this.game.isMultiplayer && !victim) {
                         for (const id in this.game.network.players) {
                             if (id === this.game.network.myId) continue;
@@ -3295,12 +3305,10 @@
                                 const toP = targetPos.clone().sub(player.pos).normalize();
                                 const dot = toP.dot(dir);
                                 if (dot > 0.5) {
-                                    // It's a remote player hit
                                     let dmg = w.damage;
-                                    // Check behind logic
                                     const enemyForward = new THREE.Vector3(-Math.sin(pData.state.yaw), 0, -Math.cos(pData.state.yaw));
                                     const attackerToVictim = player.pos.clone().sub(targetPos).normalize();
-                                    if (enemyForward.dot(attackerToVictim) > 0.5) dmg = 999; // Backstab
+                                    if (enemyForward.dot(attackerToVictim) > 0.5) dmg = 999;
 
                                     this.game.network.broadcast({ type: 'HIT', targetId: id, damage: dmg, attackerId: this.game.network.myId, attackerName: this.game.network.myName });
                                     this.game.effects.hitmarker(dmg > 100); this.game.effects.damageNumber(targetPos, dmg, dmg > 100);
@@ -3322,24 +3330,38 @@
                         audio.hit(dmg > 100);
                         return;
                     }
-                    return; // Whiffed knife
+                    return;
                 }
 
                 this.game.effects.tracer(origin.clone().addScaledVector(dir, .4), endPoint, color);
+
                 if (!hitBot && this.game.isMultiplayer) {
                     for (const id in this.game.network.players) {
                         if (id === this.game.network.myId) continue;
                         const pData = this.game.network.players[id];
                         if (!pData.state || !pData.state.alive) continue;
                         const tp = new THREE.Vector3(...pData.state.pos).add(new THREE.Vector3(0, 1, 0));
-                        if (tp.distanceTo(endPoint) < 1.5) {
-                            this.game.network.broadcast({ type: 'HIT', targetId: id, damage: w.damage, attackerId: this.game.network.myId, attackerName: this.game.network.myName });
-                            this.game.effects.hitmarker(false); this.game.effects.damageNumber(tp, w.damage, false);
+
+                        // Sniper check for head
+                        let isHead = false;
+                        let checkTp = tp.clone();
+                        if (w.kind === 'sniper') {
+                            checkTp.y += 0.7; // Aim higher for head
+                            if (tp.distanceTo(endPoint) < 2.5) isHead = true;
+                        }
+
+                        if (checkTp.distanceTo(endPoint) < (isHead ? 2.5 : 1.5)) {
+                            const dmg = isHead ? w.damage * w.headMult : w.damage;
+                            this.game.network.broadcast({ type: 'HIT', targetId: id, damage: dmg, attackerId: this.game.network.myId, attackerName: this.game.network.myName });
+                            this.game.effects.hitmarker(isHead); this.game.effects.damageNumber(tp, dmg, isHead);
                             break;
                         }
                     }
                 }
                 if (hitBot && hitBot.alive) {
+                    // Sniper headshot check
+                    if (w.kind === 'sniper' && endPoint.y - hitBot.pos.y > 1.3) hitPart = 'head';
+
                     const mult = hitPart === 'head' ? w.headMult : hitPart === 'limb' ? w.limbMult : 1.0;
                     let falloff = 1;
                     if (w.falloff) { const d = origin.distanceTo(endPoint); falloff = clamp(1 - (d / w.range) * 1.5, .2, 1); }
@@ -3371,6 +3393,7 @@
                 this.useBhop = Math.random() < 0.55;
                 this.useJumpPad = Math.random() < 0.6;
                 this.isAbyss = game.world.mapId === 'abyss';
+                this.isDummy = options.isDummy || false;
                 this.mesh = this._build(); game.scene.add(this.mesh);
                 this.hitboxes = []; this._buildHitboxes();
             }
@@ -3403,7 +3426,7 @@
             getDamageNumberPos(part) { const y = part === 'head' ? 1.7 : part === 'limb' ? .6 : 1.2; return this.mesh.position.clone().add(new THREE.Vector3(0, y, 0)); }
             takeDamage(dmg, part, attacker) { if (!this.alive) return; this.health -= dmg; this.hitFlash = .12; if (this.health <= 0) { this.alive = false; this.deathTimer = 1.2; this.game.onBotKilled(this, part, attacker); } }
             _groundAhead(dirX, dirZ) {
-                const ahead = this.pos.clone().add(new THREE.Vector3(dirX * 4.5, 0, dirZ * 4.5)); // Wider check
+                const ahead = this.pos.clone().add(new THREE.Vector3(dirX * 4.5, 0, dirZ * 4.5));
                 const from = ahead.clone(); from.y += 3;
                 const ray = new THREE.Raycaster(from, new THREE.Vector3(0, -1, 0), 0, 10);
                 const hits = ray.intersectObjects(this.game.world.meshes, false);
@@ -3411,7 +3434,10 @@
             }
             update(dt) {
                 if (!this.alive) { this.deathTimer -= dt; this.mesh.rotation.z = damp(this.mesh.rotation.z, Math.PI / 2, 8, dt); this.mesh.position.y -= dt * 1.5; return; }
-
+                if (this.isDummy) {
+                    this.mesh.position.set(this.pos.x, this.pos.y, this.pos.z);
+                    return;
+                }
                 if (this.pos.y < -8) {
                     const safe = this.game.world.botSpawns[Math.floor(Math.random() * this.game.world.botSpawns.length)];
                     this.pos.copy(safe);
@@ -3441,9 +3467,8 @@
                 else if (dist < 4) { wishX = -toPlayer.x; wishZ = -toPlayer.z; }
                 else { wishX = -toPlayer.z * .7; wishZ = toPlayer.x * .7; }
 
-                // Bot Repulsion (Don't stack)
                 for (const b of this.game.bots) {
-                    if (b === this || !b.alive) continue;
+                    if (b === this || !b.alive || b.isDummy) continue;
                     const d = this.pos.distanceTo(b.pos);
                     if (d < 1.2) {
                         const push = this.pos.clone().sub(b.pos).normalize();
@@ -3651,12 +3676,11 @@
                 for (let i = this.impacts.length - 1; i >= 0; i--) { const im = this.impacts[i]; im.life -= dt; im.vel.y -= (im.gravity || 12) * dt; im.mesh.position.addScaledVector(im.vel, dt); im.mesh.material.opacity = Math.max(0, im.life / im.maxLife); if (im.life <= 0) { this.game.scene.remove(im.mesh); if (im.geo) im.geo.dispose(); if (im.mat) im.mat.dispose(); this.impacts.splice(i, 1); } }
                 for (let i = this.explosions.length - 1; i >= 0; i--) { const ex = this.explosions[i]; ex.life -= dt; const t = 1 - ex.life / ex.maxLife; ex.mesh.scale.setScalar(1 + t * ex.radius * 2); ex.mesh.material.opacity = .85 * (1 - t); ex.light.intensity = 14 * (1 - t); if (ex.life <= 0) { this.game.scene.remove(ex.mesh); this.game.scene.remove(ex.light); ex.mesh.geometry.dispose(); ex.mesh.material.dispose(); this.explosions.splice(i, 1); } }
 
-                // Slow Blood (A-Train Finisher)
                 if (this.slowBlood.length > 0) {
-                    const timeScale = this.game.finisherTimer > 0 ? 0.05 : 1.0; // Slow down during finisher
+                    const timeScale = this.game.finisherTimer > 0 ? 0.05 : 1.0;
                     for (let i = this.slowBlood.length - 1; i >= 0; i--) {
                         const im = this.slowBlood[i];
-                        if (this.game.finisherTimer <= 0) im.gravity = 12; // Drop after finisher
+                        if (this.game.finisherTimer <= 0) im.gravity = 12;
                         im.life -= dt * timeScale;
                         im.vel.y -= (im.gravity || 0) * dt * timeScale;
                         im.mesh.position.addScaledVector(im.vel, dt * timeScale);
@@ -3714,7 +3738,7 @@
                         if (this.telekinesisTimer <= 0) {
                             this.game.scene.remove(this.telekinesisZone); this.telekinesisZone = null;
                             if (this.telekinesisTarget) {
-                                if (this.telekinesisTarget.isPlayer) { /* Handled by network */ }
+                                if (this.telekinesisTarget.isPlayer) { }
                                 else { this.telekinesisTarget.tkFreezeTimer = 0; this.telekinesisTarget.tkSlowTimer = 2.0; }
                             }
                             this.telekinesisTarget = null;
@@ -3739,13 +3763,12 @@
             _teleport() {
                 const player = this.game.player, cam = this.game.camera;
 
-                // Finisher check
                 let nearbyBot = null;
                 for (const b of this.game.bots) {
                     if (b.alive && b.pos.distanceTo(player.pos) < 3.5) { nearbyBot = b; break; }
                 }
                 if (nearbyBot && nearbyBot.health <= 30) {
-                    this.game.triggerFinisher(nearbyBot);
+                    this.game.triggerFinisher(nearbyBot, false);
                     nearbyBot.takeDamage(999, 'body', player);
                 }
 
@@ -3810,7 +3833,6 @@
                 let best = null, bestDist = 999;
                 let isPlayer = false;
 
-                // Check bots
                 for (const b of this.game.bots) {
                     if (!b.alive) continue;
                     const toB = b.pos.clone().add(new THREE.Vector3(0, 1, 0)).sub(origin);
@@ -3820,7 +3842,6 @@
                     if (toB.dot(dir) > .85 && d < bestDist) { best = b; bestDist = d; isPlayer = false; }
                 }
 
-                // Check remote players
                 if (this.game.isMultiplayer) {
                     for (const id in this.game.network.players) {
                         if (id === this.game.network.myId) continue;
@@ -3841,12 +3862,11 @@
                 if (!best) { this.game.ui.showCenterMsg('NO TARGET', 'AIM AT HOSTILE', 800); return false; }
 
                 if (isPlayer) {
-                    // Finisher check for player
                     if (best.health <= 30) { this.game.triggerFinisher(best.pos.clone(), true); }
                     this.game.network.broadcast({ type: 'TK_FREEZE', targetId: best.id });
                     this.game.network.broadcast({ type: 'HIT', targetId: best.id, damage: best.health <= 30 ? 999 : 20, attackerId: this.game.network.myId, attackerName: this.game.network.myName });
                 } else {
-                    if (best.health <= 30) this.game.triggerFinisher(best);
+                    if (best.health <= 30) this.game.triggerFinisher(best, false);
                     best.tkFreezeTimer = 2.5; best.tkSlowTimer = 2.0;
                 }
 
@@ -3930,7 +3950,6 @@
                 this.life -= dt;
                 if (this.life <= 0) return false;
 
-                // Gravity and drop
                 this.vel.y -= GRAVITY * dt;
                 this.pos.addScaledVector(this.vel, dt);
 
@@ -3998,7 +4017,7 @@
         /* ===== MENU SCENE ===== */
         function buildMenuCharacter() {
             const g = new THREE.Group();
-            const skinMat = new THREE.MeshStandardMaterial({ color: 0xe8ecf0, metalness: .35, roughness: .55 });
+            const skinMat = new THREE.MeshStandardMaterial({ color: SaveSystem.data.settings.skinColor, metalness: .35, roughness: .55 });
             const darkMat = new THREE.MeshStandardMaterial({ color: 0x1a1f28, metalness: .6, roughness: .4 });
             const accentMat = new THREE.MeshStandardMaterial({ color: SaveSystem.data.settings.uiColor, emissive: SaveSystem.data.settings.uiColor, emissiveIntensity: 2.5 });
             const legL = new THREE.Mesh(new THREE.BoxGeometry(.22, .85, .25), darkMat); legL.position.set(-.18, .42, 0); g.add(legL);
@@ -4058,7 +4077,7 @@
 
         function buildRemoteAvatar() {
             const g = new THREE.Group();
-            const skin = new THREE.MeshStandardMaterial({ color: 0xe8ecf0, metalness: .35, roughness: .55 });
+            const skin = new THREE.MeshStandardMaterial({ color: SaveSystem.data.settings.skinColor, metalness: .35, roughness: .55 });
             const accent = new THREE.MeshStandardMaterial({ color: SaveSystem.data.settings.uiColor, emissive: SaveSystem.data.settings.uiColor, emissiveIntensity: 2.0 });
             const dark = new THREE.MeshStandardMaterial({ color: 0x1a1f28, metalness: .6, roughness: .55 });
             const torso = new THREE.Mesh(new THREE.BoxGeometry(.55, .7, .32), skin); torso.position.y = 1.15; g.add(torso);
@@ -4111,7 +4130,7 @@
                 this.isMultiplayer = false; this.lastDeathPos = null; this.lastAttacker = null;
                 this._wasCinematic = false; this._scopeActive = false;
                 this._remoteDeathState = {};
-                this.finisherTimer = 0; this.finisherTarget = null;
+                this.finisherTimer = 0; this.finisherTarget = null; this.finisherDashVel = new THREE.Vector3();
 
                 this.ui.$('menuPoints').textContent = this.points;
                 this.ui.$('menuName').textContent = SaveSystem.data.playerName;
@@ -4187,7 +4206,7 @@
                 document.getElementById('loadoutPanel').classList.remove('hidden');
                 const grid = document.getElementById('loadoutGrid');
                 grid.innerHTML = '';
-                for (let i = 0; i < 4; i++) {
+                for (let i = 0; i < 5; i++) {
                     const row = document.createElement('div');
                     row.className = 'loadoutRow';
                     const current = SaveSystem.data.equippedLoadout[i];
@@ -4226,12 +4245,14 @@
             _openSettings() {
                 document.getElementById('settingsPanel').classList.remove('hidden');
                 const $ = id => document.getElementById(id);
+                $('setName').value = SaveSystem.data.playerName;
+                $('setSkin').value = SaveSystem.data.settings.skinColor;
+                $('setColor').value = SaveSystem.data.settings.uiColor;
                 $('setVol').value = audio.volume; $('setVolVal').textContent = Math.round(audio.volume * 100) + '%';
                 $('setMusicVol').value = SaveSystem.data.settings.musicVolume; $('setMusicVolVal').textContent = Math.round(SaveSystem.data.settings.musicVolume * 100) + '%';
                 $('setFov').value = this.baseFov; $('setFovVal').textContent = this.baseFov + '°';
                 $('setSens').value = this.input.sensitivity; $('setSensVal').textContent = parseFloat(this.input.sensitivity).toFixed(2);
                 $('setInv').checked = this.input.invertY;
-                $('setColor').value = SaveSystem.data.settings.uiColor;
             }
             _applySettings() {
                 const $ = id => document.getElementById(id);
@@ -4240,11 +4261,17 @@
                 this.baseFov = parseInt($('setFov').value);
                 this.input.sensitivity = parseFloat($('setSens').value);
                 this.input.invertY = $('setInv').checked;
+                SaveSystem.data.playerName = $('setName').value || ('OPERATOR-' + Math.floor(Math.random() * 999));
+                SaveSystem.data.settings.skinColor = $('setSkin').value;
+                SaveSystem.data.settings.uiColor = $('setColor').value;
                 SaveSystem.data.settings.volume = vol; SaveSystem.data.settings.musicVolume = musicVol;
                 SaveSystem.data.settings.fov = this.baseFov; SaveSystem.data.settings.sensitivity = this.input.sensitivity;
                 SaveSystem.data.settings.invertY = this.input.invertY;
-                SaveSystem.data.settings.uiColor = $('setColor').value;
                 SaveSystem.save();
+
+                this.ui.$('menuName').textContent = SaveSystem.data.playerName;
+                document.documentElement.style.setProperty('--accent', SaveSystem.data.settings.uiColor);
+
                 if (this.camera && this.player && this.player.currentWeapon) {
                     const w = this.player.currentWeapon;
                     const adsFov = w.kind === 'sniper' ? this.baseFov * .35 : this.baseFov * .6;
@@ -4401,8 +4428,19 @@
             }
 
             spawnTrainingDummies() {
-                const positions = [new THREE.Vector3(-8, .2, -8), new THREE.Vector3(8, .2, -8), new THREE.Vector3(-8, .2, 8), new THREE.Vector3(8, .2, 8)];
-                for (const p of positions) { const bot = new Bot(this, p); bot.health = bot.maxHealth = 500; this.bots.push(bot); }
+                const p1 = new Bot(this, new THREE.Vector3(-8, .2, -8));
+                p1.health = p1.maxHealth = 999999;
+                p1.isDummy = true;
+                this.bots.push(p1);
+
+                const p2 = new Bot(this, new THREE.Vector3(8, .2, -8));
+                p2.health = p2.maxHealth = 10;
+                p2.isDummy = true;
+                this.bots.push(p2);
+
+                const p3 = new Bot(this, new THREE.Vector3(-8, .2, 8));
+                p3.isDummy = true;
+                this.bots.push(p3);
             }
 
             _spawnWave() {
@@ -4470,7 +4508,6 @@
                 this.player.onHit(50);
                 if (this.player.alive) {
                     if (this.isMultiplayer && this.lastAttacker && this.network.players[this.lastAttacker]) {
-                        // Respawn health reward
                         this.network.broadcast({ type: 'HEAL', targetId: this.lastAttacker, amount: 999 });
                     }
                     this.player.reset(this.world.getSafeSpawnPoint(this.network));
@@ -4480,10 +4517,16 @@
             }
 
             triggerFinisher(target, isPlayer = false) {
-                this.finisherTimer = 3.0;
+                this.finisherTimer = 2.0;
                 this.finisherTarget = isPlayer ? { pos: target } : target;
-                this.effects.bloodExplosion(target.clone().add(new THREE.Vector3(0, 1.2, 0)));
-                this.ui.showCenterMsg('BRUTAL FINISHER', 'A-TRAIN', 3000);
+                const targetPos = isPlayer ? target : target.pos.clone();
+                const dir = targetPos.clone().sub(this.player.pos).normalize();
+
+                // A-Train Dash
+                this.finisherDashVel = dir.multiplyScalar(targetPos.distanceTo(this.player.pos) / 0.8);
+
+                this.effects.bloodExplosion(targetPos.clone().add(new THREE.Vector3(0, 1.2, 0)));
+                this.ui.showCenterMsg('BRUTAL FINISHER', '', 2500);
                 audio.perfect();
             }
 
@@ -4560,13 +4603,10 @@
             update(dt) {
                 if (this.paused) {
                     if (this.isMultiplayer) {
-                        if (this.world) this.world.update(dt);
-                        if (this.effects) this.effects.update(dt);
-                        if (this.network) this.network.update(dt);
-                        if (this.abilitySystem) this.abilitySystem.update(dt);
-                        for (let i = this.medkitDrops.length - 1; i >= 0; i--) {
-                            if (!this.medkitDrops[i].update(dt)) { this.medkitDrops[i].dispose(); this.medkitDrops.splice(i, 1); }
-                        }
+                        this.player.update(dt, true); // Update physics but freeze inputs
+                        this.network.update(dt);
+                        this.effects.update(dt);
+                        this.world.update(dt);
                         for (const b of this.bots) b.update(dt);
                         this.bots = this.bots.filter(b => { if (!b.alive && b.deathTimer <= 0) { b.dispose(); return false; } return true; });
                     }
@@ -4575,13 +4615,15 @@
                 }
                 if (this.input.hit('Escape')) { this.input.endFrame(); this._pause(); return; }
 
-                // FIX: Cinematic Finisher Logic
                 if (this.finisherTimer > 0) {
                     this.finisherTimer -= dt;
-                    dt *= 0.1; // Extreme slow motion
+                    dt *= 0.1;
 
                     if (this.finisherTarget) {
                         const targetPos = this.finisherTarget.pos || this.finisherTarget;
+                        if (this.finisherTimer > 1.0) {
+                            this.player.pos.addScaledVector(this.finisherDashVel, dt * 10);
+                        }
                         const dir = targetPos.clone().sub(this.player.pos).normalize();
                         const targetCamPos = this.player.pos.clone().sub(dir.multiplyScalar(4)).add(new THREE.Vector3(0, 2, 0));
                         this.camera.position.lerp(targetCamPos, 1 - Math.exp(-15 * dt));
@@ -4770,14 +4812,12 @@
             _detonateRocket(pos, r, directHit) {
                 this.effects.explosion(pos, r.splashRadius || 5);
 
-                // Damage Bots
                 for (const b of this.bots) {
                     if (!b.alive) continue;
                     const bp = b.pos.clone().add(new THREE.Vector3(0, 1, 0)); const d = bp.distanceTo(pos);
                     if (d < (r.splashRadius || 5)) { const falloff = 1 - d / (r.splashRadius || 5); const dmg = (b === directHit ? r.damage : r.splashDamage) * falloff; b.takeDamage(dmg, 'body', this.player); this.effects.damageNumber(b.getDamageNumberPos('body'), dmg, false); }
                 }
 
-                // Damage Remote Players
                 if (this.isMultiplayer) {
                     for (const id in this.network.players) {
                         if (id === this.network.myId) continue;
@@ -4803,7 +4843,7 @@
                         this.player.perfectStack = Math.min(5, (this.player.perfectStack || 0) + 1);
                         this.player.perfectComboTimer = 4.0;
                         this.perfectFreeze = 1.0;
-                        this.player.invulnTimer = 1.0; // I-frames for perfect rocket jump
+                        this.player.invulnTimer = 1.0;
                         this.pendingLaunchVel = 32 + this.player.perfectStack * 12;
                         this.showFlash(0.9, 800); audio.perfect();
                         this.ui.showCenterMsg('PERFECT JUMP', 'STACK ' + this.player.perfectStack, 1200);
