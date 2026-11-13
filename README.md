@@ -1,5 +1,5 @@
 ░▒▓ BLACKSITE - REDUX ▓▒░
-CLASSIFIED COMBAT SIMULATION // BUILD 1.2.0⚡ 
+CLASSIFIED COMBAT SIMULATION // BUILD 1.9.0⚡ 
 
 OVERVIEW: BLACKSITE-Redux is a high-velocity, browser-based 3D FPS built with Three.js and WebGL. Inspired by fast-paced arena shooters like Rivals and Redliner on Roblox, alongside the sleek aesthetic of Call of Duty: Black Ops 3, it features momentum-based physics, explosive rocket jumping, customizable 3-weapon armories, multi-tier tactical maps, and intense AI wave combat.🔥 
 
