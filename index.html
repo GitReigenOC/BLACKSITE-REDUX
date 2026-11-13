@@ -555,7 +555,7 @@
         }
 
         /* ===== SAVE ===== */
-        const SAVE_KEY = 'blacksite_redux_save_v3';
+        const SAVE_KEY = 'blacksite_redux_save_v1'; // Reverted to v1 to fix lost data
         const SaveSystem = {
             data: {
                 points: 0,
@@ -568,7 +568,9 @@
             },
             load() {
                 try {
-                    const s = localStorage.getItem(SAVE_KEY);
+                    let s = localStorage.getItem(SAVE_KEY);
+                    if (!s) s = localStorage.getItem('blacksite_redux_save_v2');
+                    if (!s) s = localStorage.getItem('blacksite_redux_save_v3');
                     if (s) {
                         const parsed = JSON.parse(s);
                         this.data = { ...this.data, ...parsed };
@@ -580,7 +582,7 @@
                 } catch (e) { console.error('Save load error', e); }
             },
             save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); } catch (e) { console.error('Save error', e); } },
-            reset() { if (confirm("Are you sure you want to reset all progress, weapons, camos, and settings?")) { localStorage.removeItem(SAVE_KEY); location.reload(); } }
+            reset() { if (confirm("Are you sure you want to reset all progress, weapons, camos, and settings?")) { localStorage.removeItem(SAVE_KEY); localStorage.removeItem('blacksite_redux_save_v2'); localStorage.removeItem('blacksite_redux_save_v3'); location.reload(); } }
         };
         SaveSystem.load();
 
@@ -840,10 +842,7 @@
                 this.myName = SaveSystem.data.playerName || ('OPERATOR-' + Math.floor(Math.random() * 999));
                 this._syncTimer = 0;
                 this._lastReceiveTime = {};
-                // Send leave packet on unload
-                addEventListener('beforeunload', () => {
-                    try { this.broadcast({ type: 'LEAVE' }); } catch (e) { }
-                });
+                addEventListener('beforeunload', () => { try { this.broadcast({ type: 'LEAVE' }); } catch (e) { } });
             }
 
             host(maxPlayers, isPublic = false) {
@@ -1729,7 +1728,7 @@
             const tex = generateCamoTexture(camo);
             const bodyMat = new THREE.MeshStandardMaterial({ map: tex, color: 0xffffff, metalness: .85, roughness: .35 });
             const darkMat = new THREE.MeshStandardMaterial({ color: 0x0a0d11, metalness: .7, roughness: .5 });
-            const accentMat = new THREE.MeshStandardMaterial({ color: 0x1a1f26, emissive: CAMO_COLORS[camo], emissiveIntensity: 1.5, metalness: .4, roughness: .4 });
+            const accentMat = new THREE.MeshStandardMaterial({ color: 0x1a1f26, emissive: CAMO_COLORS[camo] || 0xffdd44, emissiveIntensity: 1.5, metalness: .4, roughness: .4 });
             if (kind === 'rifle') {
                 addBox(g, .06, .09, .85, 0, .02, -.35, bodyMat); addBox(g, .05, .05, .5, 0, .02, -.95, darkMat);
                 addBox(g, .07, .06, .22, 0, -.04, -.1, darkMat); addBox(g, .08, .1, .22, 0, .11, .1, darkMat);
@@ -1770,7 +1769,9 @@
         class Armory {
             constructor(game) { this.game = game; this.ammoState = new Map(); }
             _makeWeapon(kind) {
-                const def = WEAPON_DEFS[kind]; const w = { ...def };
+                const def = WEAPON_DEFS[kind];
+                if (!def) return null; // FIX: Prevent crash on invalid weapon
+                const w = { ...def };
                 w.camo = SaveSystem.data.equippedCamos[kind] || 'default';
                 w.adsAmount = 0; w.fireCooldown = 0; w.reloading = false; w.reloadTimer = 0; w.inspectTimer = 0; w.boltTimer = 0; w._prevLeft = false;
                 const st = this.ammoState.get(kind) || { mag: def.mag, reserve: def.reserve };
@@ -2520,9 +2521,13 @@
                     const row = document.createElement('div');
                     row.className = 'loadoutRow';
                     const current = SaveSystem.data.equippedLoadout[i];
+                    
+                    // FIX: Prevent duplicate weapons in loadout
+                    const equippedElsewhere = SaveSystem.data.equippedLoadout.filter((k, idx) => k && idx !== i);
                     const weaponOptions = ['<option value="">— EMPTY —</option>'].concat(
-                        SaveSystem.data.unlockedWeapons.map(k => `<option value="${k}" ${k === current ? 'selected' : ''}>${WEAPON_DEFS[k].name}</option>`)
+                        SaveSystem.data.unlockedWeapons.filter(k => !equippedElsewhere.includes(k)).map(k => `<option value="${k}" ${k === current ? 'selected' : ''}>${WEAPON_DEFS[k].name}</option>`)
                     ).join('');
+                    
                     let camoOptions = '';
                     if (current) {
                         const avail = Object.keys(CAMO_NAMES).filter(c => c === 'default' || SaveSystem.data.unlockedCamos.includes(`${current}:${c}`));
@@ -2636,40 +2641,48 @@
             }
 
             _startGame(mode, map, isNetGame = false) {
-                this.isMultiplayer = isNetGame;
-                this.paused = false; this.running = false; this._hasEverLocked = false;
-                this.countdown = 3.5; this.lockInput = true;
-                this.perfectFreeze = 0; this.pendingLaunchVel = 0; this.impactFreeze = 0;
-                this._wasCinematic = false;
-                document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
-                document.getElementById('menu').classList.add('hidden');
-                document.getElementById('waitingLobby').classList.remove('show');
-                this.ui.clickHint.classList.remove('show'); this.ui.killfeed.innerHTML = ''; this.ui.countdown.classList.remove('show');
-                document.getElementById('hud').classList.remove('cinematic');
-                audio.init();
-                if (mode === 'training') this.music.playTraining();
-                else if (mode === 'COOP_WAVE' || mode === 'wave') this.music.playWave();
-                else this.music.playPVP();
+                try {
+                    this.isMultiplayer = isNetGame;
+                    this.paused = false; this.running = false; this._hasEverLocked = false;
+                    this.countdown = 3.5; this.lockInput = true;
+                    this.perfectFreeze = 0; this.pendingLaunchVel = 0; this.impactFreeze = 0;
+                    this._wasCinematic = false;
+                    document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
+                    document.getElementById('menu').classList.add('hidden');
+                    document.getElementById('waitingLobby').classList.remove('show');
+                    this.ui.clickHint.classList.remove('show'); this.ui.killfeed.innerHTML = ''; this.ui.countdown.classList.remove('show');
+                    document.getElementById('hud').classList.remove('cinematic');
+                    audio.init();
+                    if (mode === 'training') this.music.playTraining();
+                    else if (mode === 'COOP_WAVE' || mode === 'wave') this.music.playWave();
+                    else this.music.playPVP();
 
-                if (map) this.selectedMap = map;
-                this._teardown();
-                this._setupScene();
-                this.mode = mode; this.wave = 1; this.kills = 0; this.betweenWaves = false; this.waveTimer = 1.2;
-                this.lastDeathPos = this.world.playerSpawn.clone();
-                this.player.reset(this.world.playerSpawn);
-                this.ui._buildSlots(); this.ui.updateHealth(this.player.health);
-                this.ui.updateAmmo(this.player.currentWeapon, 0);
-                this.ui.updateMedkits(this.player.medkits, this.player.maxMedkits);
-                this.ui.hud.classList.remove('hidden');
-                this.abilitySystem.reset(); this.ui.updateAbility(null, 0, 3, 0);
+                    if (map) this.selectedMap = map;
+                    this._teardown();
+                    this._setupScene();
+                    this.mode = mode; this.wave = 1; this.kills = 0; this.betweenWaves = false; this.waveTimer = 1.2;
+                    this.lastDeathPos = this.world.playerSpawn.clone();
+                    this.player.reset(this.world.playerSpawn);
+                    this.ui._buildSlots(); this.ui.updateHealth(this.player.health);
+                    this.ui.updateAmmo(this.player.currentWeapon, 0);
+                    this.ui.updateMedkits(this.player.medkits, this.player.maxMedkits);
+                    this.ui.hud.classList.remove('hidden');
+                    this.abilitySystem.reset(); this.ui.updateAbility(null, 0, 3, 0);
 
-                if (mode === 'training') { this.spawnTrainingDummies(); this.ui.updateTopInfo('training', 0, this.bots.length); }
-                else if (mode === 'wave' || mode === 'COOP_WAVE') { this._spawnWave(); this.ui.updateTopInfo('wave', this.wave, this.bots.length); }
-                else this.ui.updateTopInfo('PVP', 0, 0);
+                    if (mode === 'training') { this.spawnTrainingDummies(); this.ui.updateTopInfo('training', 0, this.bots.length); }
+                    else if (mode === 'wave' || mode === 'COOP_WAVE') { this._spawnWave(); this.ui.updateTopInfo('wave', this.wave, this.bots.length); }
+                    else this.ui.updateTopInfo('PVP', 0, 0);
 
-                this._startCountdown();
-                this.running = true;
-                setTimeout(() => { if (this.running) this.input.lock(); }, 50);
+                    this._startCountdown();
+                    this.running = true;
+                    setTimeout(() => { if (this.running) this.input.lock(); }, 50);
+                } catch (e) {
+                    console.error("Failed to start game:", e);
+                    document.getElementById('menu').classList.remove('hidden');
+                    this.running = false;
+                    this.paused = true;
+                    alert("Error starting game: " + e.message + "\nCheck the console for details.");
+                }
             }
 
             _startCountdown() {
