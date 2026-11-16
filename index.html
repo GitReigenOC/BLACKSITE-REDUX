@@ -360,7 +360,8 @@
         #hud.cinematic #hitmarker,
         #hud.cinematic #buffBar,
         #hud.cinematic #killfeed,
-        #hud.cinematic #medkitBlock {
+        #hud.cinematic #medkitBlock,
+        #hud.cinematic #flashBlock {
             display: none !important
         }
 
@@ -1939,10 +1940,10 @@
         const SaveSystem = {
             data: {
                 points: 0,
-                unlockedWeapons: ['rifle', 'shotgun', 'rocket', 'knife', 'kar98'],
-                unlockedCamos: ['rifle:default', 'shotgun:default', 'rocket:default', 'sniper:default', 'knife:default', 'kar98:default'],
+                unlockedWeapons: ['rifle', 'shotgun', 'rocket', 'knife', 'kar98', 'smg', 'lmg', 'ak47'],
+                unlockedCamos: ['rifle:default', 'shotgun:default', 'rocket:default', 'sniper:default', 'knife:default', 'kar98:default', 'smg:default', 'lmg:default', 'ak47:default'],
                 equippedLoadout: ['rifle', 'shotgun', 'rocket', 'knife'],
-                equippedCamos: { rifle: 'default', shotgun: 'default', rocket: 'default', sniper: 'default', knife: 'default', kar98: 'default' },
+                equippedCamos: { rifle: 'default', shotgun: 'default', rocket: 'default', sniper: 'default', knife: 'default', kar98: 'default', smg: 'default', lmg: 'default', ak47: 'default' },
                 settings: { volume: 0.6, musicVolume: 0.4, fov: 90, sensitivity: 1, scopeSensitivity: 0.8, invertY: false, uiColor: '#ff7a1a', skinColor: '#e8ecf0' },
                 playerName: 'OPERATOR-' + Math.floor(Math.random() * 999)
             },
@@ -1954,7 +1955,7 @@
                     if (s) {
                         const parsed = JSON.parse(s);
                         this.data = { ...this.data, ...parsed };
-                        if (!this.data.equippedCamos) this.data.equippedCamos = { rifle: 'default', shotgun: 'default', rocket: 'default', sniper: 'default', knife: 'default', kar98: 'default' };
+                        if (!this.data.equippedCamos) this.data.equippedCamos = { rifle: 'default', shotgun: 'default', rocket: 'default', sniper: 'default', knife: 'default', kar98: 'default', smg: 'default', lmg: 'default', ak47: 'default' };
                         if (!this.data.equippedLoadout) this.data.equippedLoadout = ['rifle', 'shotgun', 'rocket', 'knife'];
                         if (!this.data.settings) this.data.settings = { volume: 0.6, musicVolume: 0.4, fov: 90, sensitivity: 1, scopeSensitivity: 0.8, invertY: false, uiColor: '#ff7a1a', skinColor: '#e8ecf0' };
                         if (this.data.settings.scopeSensitivity === undefined) this.data.settings.scopeSensitivity = 0.8;
@@ -1962,10 +1963,8 @@
                         if (!this.data.settings.skinColor) this.data.settings.skinColor = '#e8ecf0';
                         if (!this.data.playerName) this.data.playerName = 'OPERATOR-' + Math.floor(Math.random() * 999);
 
-                        if (!this.data.unlockedWeapons.includes('knife')) this.data.unlockedWeapons.push('knife');
-                        if (!this.data.unlockedCamos.includes('knife:default')) this.data.unlockedCamos.push('knife:default');
-                        if (!this.data.unlockedWeapons.includes('kar98')) this.data.unlockedWeapons.push('kar98');
-                        if (!this.data.unlockedCamos.includes('kar98:default')) this.data.unlockedCamos.push('kar98:default');
+                        const addWep = (k) => { if (!this.data.unlockedWeapons.includes(k)) this.data.unlockedWeapons.push(k); if (!this.data.unlockedCamos.includes(k + ':default')) this.data.unlockedCamos.push(k + ':default'); if (!this.data.equippedCamos[k]) this.data.equippedCamos[k] = 'default'; };
+                        addWep('knife'); addWep('kar98'); addWep('smg'); addWep('lmg'); addWep('ak47');
 
                         document.documentElement.style.setProperty('--accent', this.data.settings.uiColor);
                     }
@@ -2042,7 +2041,7 @@
             shoot(kind, pos) {
                 const s = this._spatial(pos); if (s.gain < 0.02) return;
                 this._click(0.55 * s.gain, s.pan);
-                if (kind === 'rifle') {
+                if (kind === 'rifle' || kind === 'smg' || kind === 'lmg' || kind === 'ak47') {
                     this._noise({ dur: .09, gain: .42 * s.gain, freq: 5500, freqEnd: 400, q: .85, pan: s.pan });
                     this._sweep(190, 55, .085, .55 * s.gain, 'sawtooth', s.pan);
                     this._sub(65, .08, .38 * s.gain, s.pan);
@@ -2213,7 +2212,7 @@
                     if (document.activeElement && ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
                     if (e.code === 'Tab') { e.preventDefault(); if (this.onTab) this.onTab(true); return; }
                     if (e.repeat) return; const c = e.code; this.keys.add(c); this.pressed.add(c);
-                    if (['Space', 'KeyR', 'KeyF', 'KeyE', 'KeyQ', 'KeyG', 'KeyB', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5'].includes(c)) e.preventDefault();
+                    if (['Space', 'KeyR', 'KeyF', 'KeyE', 'KeyQ', 'KeyG', 'KeyB', 'KeyN', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5'].includes(c)) e.preventDefault();
                 });
                 addEventListener('keyup', e => { if (e.code === 'Tab') { if (this.onTab) this.onTab(false); return; } this.keys.delete(e.code); });
                 addEventListener('blur', () => { this.keys.clear(); this.left = this.right = false; });
@@ -2242,6 +2241,9 @@
             shotgun: { kind: 'shotgun', name: 'BREACHER 12G', auto: false, rpm: 75, mag: 6, reserve: 36, reloadTime: 2.6, damage: 22, pellets: 8, headMult: 2.0, limbMult: .75, spreadHip: .09, spreadAds: .05, recoil: 1.5, range: 30, sound: 'shotgun', falloff: true, price: 0, shellReload: true },
             sniper: { kind: 'sniper', name: 'LONGBOW .50', auto: false, rpm: 35, mag: 5, reserve: 30, reloadTime: 3.2, damage: 95, headMult: 5.0, limbMult: .75, spreadHip: .06, spreadAds: 0, recoil: 3.0, range: 1000, sound: 'sniper', boltTime: .55, price: 800 },
             kar98: { kind: 'kar98', name: 'KAR98K', auto: false, rpm: 45, mag: 5, reserve: 30, reloadTime: 2.8, damage: 80, headMult: 3.0, limbMult: .8, spreadHip: .05, spreadAds: 0, recoil: 4.0, range: 500, sound: 'kar98', boltTime: .8, price: 1200 },
+            smg: { kind: 'smg', name: 'MP-5', auto: true, rpm: 900, mag: 40, reserve: 240, reloadTime: 1.8, damage: 18, headMult: 2.0, limbMult: .8, spreadHip: .04, spreadAds: .01, recoil: 0.5, range: 150, sound: 'smg', price: 500 },
+            lmg: { kind: 'lmg', name: 'M249 SAW', auto: true, rpm: 750, mag: 100, reserve: 200, reloadTime: 4.0, damage: 30, headMult: 2.5, limbMult: .75, spreadHip: .06, spreadAds: .01, recoil: 1.2, range: 300, sound: 'lmg', price: 1500 },
+            ak47: { kind: 'ak47', name: 'AK-47', auto: true, rpm: 600, mag: 30, reserve: 120, reloadTime: 2.2, damage: 35, headMult: 3.0, limbMult: .75, spreadHip: .03, spreadAds: .005, recoil: 1.8, range: 250, sound: 'ak47', price: 1000 },
             rocket: { kind: 'rocket', name: 'HAVOC RL', auto: false, rpm: 55, mag: 3, reserve: 9, reloadTime: 2.8, damage: 120, splashDamage: 55, splashRadius: 5.5, spreadHip: .008, spreadAds: .003, recoil: 2.0, range: 300, sound: 'rocket', projectile: true, rocketSpeed: 42, price: 0 },
             knife: { kind: 'knife', name: 'TACTICAL KARAMBIT', auto: false, rpm: 120, mag: 1, reserve: 1, reloadTime: 0, damage: 35, headMult: 3, limbMult: 1, spreadHip: 0, spreadAds: 0, recoil: 0, range: 2.0, sound: 'knife', price: 0, melee: true, backstabMult: 999 },
             dismantle: { kind: 'dismantle', name: 'DISMANTLE', auto: false, rpm: 60, mag: 99, reserve: 99, reloadTime: 0, damage: 1000, headMult: 1, limbMult: 1, spreadHip: 0, spreadAds: 0, recoil: 0, range: 50, sound: 'slash', price: 0, melee: true },
@@ -2440,7 +2442,6 @@
                 const mode = document.getElementById('hostMode').value;
                 const map = document.getElementById('hostMap').value;
 
-                // Distribute spawns
                 const spawns = this.game.world.spawnPoints;
                 let i = 0;
                 for (const id in this.players) {
@@ -2495,11 +2496,13 @@
                     }
                     if (this.isHost) this.broadcast(data);
                 } else if (data.type === 'TK_FREEZE') {
-                    if (data.targetId === this.myId && this.game.player) { this.game.player.tkFreezeTimer = 2.5; }
+                    if (data.targetId === this.myId && this.game.player) { this.game.player.tkFreezeTimer = 2.5; this.game.player.vel.y = -30; }
                     if (this.isHost) this.broadcast(data);
                 } else if (data.type === 'FLASH') {
                     if (this.game.player && this.game.player.pos.distanceTo(new THREE.Vector3(...data.pos)) < 15) {
-                        this.game.ui.flashbang();
+                        const toFlash = new THREE.Vector3(...data.pos).sub(this.game.camera.position).normalize();
+                        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.game.camera.quaternion);
+                        if (toFlash.dot(forward) > 0.5) this.game.ui.flashbang();
                     }
                     if (this.isHost) this.broadcast(data);
                 } else if (data.type === 'POWERUP_SPAWN') {
@@ -2916,7 +2919,7 @@
         }
 
         /* ===== PLAYER ===== */
-        const PLAYER_HEIGHT = 1.8, CROUCH_HEIGHT = 1.05, PLAYER_RADIUS = .42, EYE_HEIGHT = 1.62, CROUCH_EYE = .9, GRAVITY = 26, JUMP_VEL = 10.5, MAX_H_SPEED = 22;
+        const PLAYER_HEIGHT = 1.8, CROUCH_HEIGHT = 1.05, PLAYER_RADIUS = .42, EYE_HEIGHT = 1.62, CROUCH_EYE = .9, GRAVITY = 26, JUMP_VEL = 11.5, MAX_H_SPEED = 22;
 
         class Player {
             constructor(game) {
@@ -2939,7 +2942,9 @@
                 this.deathAnimT = 0;
                 this.tkFreezeTimer = 0;
                 this.sukunaTimer = 0;
+                this.savedWeapons = null;
                 this._swingAnim = 0;
+                this._swingVariant = 0;
                 this.viewModelRoot = new THREE.Group(); this.game.camera.add(this.viewModelRoot);
                 this.weaponGroups = []; this.currentWeaponIdx = 0;
                 this.armory = game.armory;
@@ -2964,12 +2969,14 @@
                 this.perfectStack = 0; this.perfectComboTimer = 0; this._jumpBuffer = 0; this._spaceWasDown = false;
                 this.medkitUseTimer = 0; this.deathAnimT = 0; this.tkFreezeTimer = 0;
                 this.flashbangs = 2; this.flashbangCooldown = 0; this._swingAnim = 0;
-                this.sukunaTimer = 0;
+                this.sukunaTimer = 0; this.savedWeapons = null;
                 for (const w of this.weapons) if (w) this.armory.refill(w);
                 this.armory.equip(this, 0);
                 this.game.camera.rotation.set(0, 0, 0);
             }
             activateSukuna() {
+                if (this.sukunaTimer > 0) return;
+                this.savedWeapons = this.weapons;
                 this.sukunaTimer = 35;
                 this.weapons = [this.armory._makeWeapon('dismantle'), this.armory._makeWeapon('cleave')];
                 this._buildViewModels();
@@ -2997,7 +3004,13 @@
                     this.viewModelRoot.visible = false;
                     return;
                 }
-                if (this.tkFreezeTimer > 0) { this.tkFreezeTimer -= dt; return; }
+                if (this.tkFreezeTimer > 0) {
+                    this.tkFreezeTimer -= dt;
+                    this._move(dt, true);
+                    this._updateViewModel(dt);
+                    this.viewModelRoot.visible = true;
+                    return;
+                }
                 this.viewModelRoot.visible = true;
                 this._idleTime += dt;
                 if (this.invulnTimer > 0) this.invulnTimer -= dt;
@@ -3013,7 +3026,7 @@
                 if (this.sukunaTimer > 0) {
                     this.sukunaTimer -= dt;
                     if (this.sukunaTimer <= 0) {
-                        this.weapons = this.armory.equipped();
+                        this.weapons = this.savedWeapons || this.armory.equipped();
                         this._buildViewModels();
                         this.game.ui.showCenterMsg("SUKUNA EXPIRED", "WEAPONS RESTORED", 2000);
                     }
@@ -3100,10 +3113,10 @@
                         if (this.sliding) this.sliding = false;
                         audio.jump();
                     } else if (this.sliding) {
-                        this.vel.x *= 1 - dt * 0.2;
-                        this.vel.z *= 1 - dt * 0.2;
+                        this.vel.x *= 1 - dt * 1.5;
+                        this.vel.z *= 1 - dt * 1.5;
                     } else {
-                        const accel = 120; // Fun, snappy acceleration
+                        const accel = 120;
                         if (hasWish) { this.vel.x = damp(this.vel.x, wishX * maxSpeed, accel, dt); this.vel.z = damp(this.vel.z, wishZ * maxSpeed, accel, dt); }
                         else { this.vel.x = damp(this.vel.x, 0, 14, dt); this.vel.z = damp(this.vel.z, 0, 14, dt); }
                     }
@@ -3113,7 +3126,7 @@
                         const wishSpeed = Math.max(maxSpeed, 11);
                         const addSpeed = wishSpeed - cur;
                         if (addSpeed > 0) {
-                            const accelSpeed = Math.min(35 * dt, addSpeed); // Tighter air control
+                            const accelSpeed = Math.min(35 * dt, addSpeed);
                             this.vel.x += wishX * accelSpeed; this.vel.z += wishZ * accelSpeed;
                         }
                     }
@@ -3263,12 +3276,22 @@
                 if (!this.onGround) { by += .02; rx -= .05; }
                 if (this.sliding) { by -= .12; bz += .08; rx += .15; rz += .2; }
                 if (w.reloading) { const t = 1 - w.reloadTimer / WEAPON_DEFS[w.kind].reloadTime; const dip = Math.sin(t * Math.PI); by -= dip * .18; rz += dip * .5; rx += dip * .35; }
-                if (w.kind === 'sniper' && w.boltTimer > 0) { const t = w.boltTimer / (WEAPON_DEFS.sniper.boltTime || .55); const sw = Math.sin(t * Math.PI); bz += sw * .04; rx += sw * .4; rz += sw * .15; }
+                if ((w.kind === 'sniper' || w.kind === 'kar98') && w.boltTimer > 0) { const t = w.boltTimer / (WEAPON_DEFS[w.kind].boltTime || .55); const sw = Math.sin(t * Math.PI); bz += sw * .04; rx += sw * .4; rz += sw * .15; }
+
                 if (w.melee && this._swingAnim > 0) {
                     const t = 1 - (this._swingAnim / 0.3);
-                    rx -= t * Math.PI;
-                    bz += Math.sin(t * Math.PI) * 0.3;
+                    if (this._swingVariant === 0) {
+                        rx -= t * Math.PI;
+                        rz += t * Math.PI * 0.5;
+                        bz += Math.sin(t * Math.PI) * 0.3;
+                    } else if (this._swingVariant === 1) {
+                        ry += t * Math.PI;
+                        bx += Math.sin(t * Math.PI) * 0.2;
+                    } else {
+                        bz -= Math.sin(t * Math.PI) * 0.4;
+                    }
                 }
+
                 if (this._raiseAnim > 0) { this._raiseAnim -= dt; const t = this._raiseAnim / .25; by -= t * .25; rx += t * .3; }
                 if (this.landTimer > 0) { const t = this.landTimer / .25; by -= t * .06; rx += t * .1; }
                 vg.position.set(bx, by, bz);
@@ -3307,14 +3330,11 @@
             const accentMat = new THREE.MeshStandardMaterial({ color: 0x1a1f26, emissive: CAMO_COLORS[camo] || 0xffdd44, emissiveIntensity: 1.5, metalness: .4, roughness: .4 });
 
             if (camo === 'dragon') {
-                // Custom 3D Dragon Model
                 const scaleMat = new THREE.MeshStandardMaterial({ color: 0x220000, emissive: 0xff2200, emissiveIntensity: 0.8, roughness: 0.8 });
-                addBox(g, .08, .15, .9, 0, .02, -.35, scaleMat); // Body
-                addBox(g, .06, .06, .5, 0, .02, -1.0, darkMat); // Barrel
-                // Dragon head
+                addBox(g, .08, .15, .9, 0, .02, -.35, scaleMat);
+                addBox(g, .06, .06, .5, 0, .02, -1.0, darkMat);
                 const head = new THREE.Mesh(new THREE.ConeGeometry(.1, .3, 4), scaleMat);
                 head.rotation.x = -Math.PI / 2; head.position.set(0, .05, -.6); g.add(head);
-                // Wings
                 const wingL = new THREE.Mesh(new THREE.ConeGeometry(.15, .4, 3), scaleMat);
                 wingL.rotation.z = Math.PI / 2; wingL.position.set(-.15, .1, -.3); g.add(wingL);
                 const wingR = new THREE.Mesh(new THREE.ConeGeometry(.15, .4, 3), scaleMat);
@@ -3336,6 +3356,19 @@
                 addBox(g, .055, .055, .35, 0, .13, -.35, accentMat); addBox(g, .08, .02, .2, 0, .22, -.35, darkMat);
                 addBox(g, .02, .02, .08, .06, .06, -.15, darkMat); addBox(g, .06, .1, .09, 0, -.1, -.15, darkMat);
                 addHands(g, .02, -.05, -.25, 0, -.02, -.7);
+            } else if (kind === 'smg') {
+                addBox(g, .06, .08, .65, 0, .02, -.3, bodyMat); addBox(g, .05, .05, .4, 0, .02, -.75, darkMat);
+                addBox(g, .07, .06, .2, 0, -.04, -.1, darkMat); addBox(g, .08, .1, .2, 0, .1, .1, darkMat);
+                addHands(g, .02, -.05, -.2, 0, -.02, -.6);
+            } else if (kind === 'lmg') {
+                addBox(g, .08, .12, .95, 0, .02, -.4, bodyMat); addBox(g, .06, .06, .6, 0, .02, -1.0, darkMat);
+                addBox(g, .1, .1, .25, 0, .12, .1, darkMat); addBox(g, .12, .15, .15, 0, -.12, -.1, darkMat);
+                addHands(g, .02, -.05, -.2, 0, -.02, -.7);
+            } else if (kind === 'ak47') {
+                addBox(g, .06, .1, .85, 0, .02, -.35, bodyMat); addBox(g, .05, .05, .5, 0, .02, -.95, darkMat);
+                addBox(g, .07, .06, .22, 0, -.04, -.1, darkMat); addBox(g, .08, .1, .22, 0, .11, .1, darkMat);
+                addBox(g, .04, .12, .08, 0, -.12, -.15, darkMat);
+                addHands(g, .02, -.05, -.2, 0, -.02, -.65);
             } else if (kind === 'rocket') {
                 addBox(g, .12, .12, 1.05, 0, .02, -.35, bodyMat); addBox(g, .14, .14, .25, 0, .02, .15, darkMat);
                 addBox(g, .11, .11, .15, 0, .02, -.9, accentMat); addBox(g, .09, .09, .35, 0, .09, -.1, darkMat);
@@ -3347,7 +3380,6 @@
                 addBox(g, .04, .04, .15, 0, -.02, -.05, darkMat);
                 addHands(g, .02, -.05, -.1, 0, -.02, -.1);
             } else if (kind === 'dismantle' || kind === 'cleave') {
-                // Sukuna blades
                 const metal = new THREE.MeshStandardMaterial({ color: 0xff0000, metalness: 1.0, roughness: 0.1, emissive: 0x440000 });
                 addBox(g, .02, .15, .4, 0, .02, -.2, metal);
                 addBox(g, .05, .05, .15, 0, -.02, -.05, darkMat);
@@ -3379,12 +3411,14 @@
                 const st = this.ammoState.get(kind) || { mag: def.mag, reserve: def.reserve };
                 w.mag = st.mag;
                 w.reserve = this.game.isMultiplayer ? Infinity : st.reserve;
+                if (def.melee) { w.mag = Infinity; w.reserve = Infinity; }
                 return w;
             }
             refill(w) {
                 const def = WEAPON_DEFS[w.kind];
                 w.reserve = this.game.isMultiplayer ? Infinity : def.reserve;
                 w.mag = def.mag;
+                if (def.melee) { w.mag = Infinity; w.reserve = Infinity; }
                 this.ammoState.set(w.kind, { mag: w.mag, reserve: w.reserve });
             }
             equipped() { return SaveSystem.data.equippedLoadout.map(k => k ? this._makeWeapon(k) : null).filter(w => w !== null); }
@@ -3423,6 +3457,7 @@
                     audio.shoot(w.sound);
                 } else {
                     player._swingAnim = 0.3;
+                    player._swingVariant = randInt(0, 2);
                     audio.shoot('knife');
                 }
 
@@ -3443,7 +3478,6 @@
                 const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
                 const origin = cam.position.clone();
 
-                // Tighten hitbox by using raycast
                 const ray = new THREE.Raycaster(origin, dir, 0, w.range);
                 const hits = ray.intersectObjects(this.game.raycastTargets(), true);
                 let hitBot = null, hitPart = null;
@@ -3489,11 +3523,9 @@
                 }
 
                 if (w.kind === 'dismantle' || w.kind === 'cleave') {
-                    // Voxel destruction
                     for (const h of hits) {
                         if (h.object.isMesh && !h.object.userData.bot) {
                             const mesh = h.object;
-                            // Don't break floor or ceiling/walls
                             if (mesh.geometry.parameters.height > 20 || mesh.geometry.parameters.width > 20) break;
 
                             this.game.world.meshes = this.game.world.meshes.filter(m => m !== mesh);
@@ -3536,7 +3568,7 @@
                     let falloff = 1;
                     if (w.falloff) { const d = origin.distanceTo(endPoint); falloff = clamp(1 - (d / w.range) * 1.5, .2, 1); }
                     let dmg = w.damage * mult * falloff * (player.damageBoostTimer > 0 ? 1.4 : 1);
-                    if (w.kind === 'sniper' && hitPart !== 'head') dmg = Math.min(dmg, 95); // Body shot max 95
+                    if (w.kind === 'sniper' && hitPart !== 'head') dmg = Math.min(dmg, 95);
 
                     hitBot.takeDamage(dmg, hitPart, player);
                     this.game.effects.damageNumber(hitBot.getDamageNumberPos(hitPart), dmg, hitPart === 'head');
@@ -3561,11 +3593,12 @@
                 this.alive = true; this.health = 100; this.maxHealth = 100; this.onGround = false; this.height = 1.7; this.radius = .4;
                 this.fireTimer = rand(1.2, 2.2); this.hitFlash = 0; this.deathTimer = 0; this.walkPhase = 0; this.shootKick = 0;
                 this.tkFreezeTimer = 0; this.tkSlowTimer = 0;
-                this.weaponKind = options.weaponKind || pick(['rifle', 'rifle', 'rifle', 'shotgun', 'sniper', 'rocket']);
+                this.weaponKind = options.weaponKind || pick(['rifle', 'rifle', 'rifle', 'shotgun', 'sniper', 'rocket', 'smg', 'lmg', 'ak47']);
                 this.useBhop = Math.random() < 0.55;
                 this.useJumpPad = Math.random() < 0.6;
                 this.isAbyss = game.world.mapId === 'abyss';
                 this.isDummy = options.isDummy || false;
+                this.dummyType = options.dummyType || '';
                 this.mesh = this._build(); game.scene.add(this.mesh);
                 this.hitboxes = []; this._buildHitboxes();
             }
@@ -3588,6 +3621,26 @@
                 const aR = new THREE.Mesh(new THREE.BoxGeometry(.14, .55, .16), skin); aR.position.y = -.27; this.armR.add(aR); g.add(this.armR);
                 this.gunMesh = new THREE.Mesh(new THREE.BoxGeometry(.08, .1, .6), dark); this.gunMesh.position.set(.2, 1.1, -.35); g.add(this.gunMesh);
                 this.torso = torso; this.head = head;
+
+                if (this.isDummy && this.dummyType) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 256; canvas.height = 64;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                    ctx.fillRect(0, 0, 256, 64);
+                    ctx.font = 'bold 28px Arial';
+                    ctx.fillStyle = '#ff7a1a';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(this.dummyType, 128, 32);
+                    const tex = new THREE.CanvasTexture(canvas);
+                    const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false });
+                    const sprite = new THREE.Sprite(mat);
+                    sprite.scale.set(2.5, 0.6, 1);
+                    sprite.position.y = 2.3;
+                    g.add(sprite);
+                }
+
                 g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
                 return g;
             }
@@ -3665,6 +3718,10 @@
                     if (nearestPad && nearestD < 10) {
                         const toPad = nearestPad.pos.clone().sub(this.pos); toPad.y = 0; toPad.normalize();
                         wishX = toPad.x; wishZ = toPad.z;
+                        if (nearestD < 3.0 && this.onGround) {
+                            this.vel.y = JUMP_VEL * 1.2;
+                            this.onGround = false;
+                        }
                     }
                 }
 
@@ -4043,6 +4100,19 @@
                     this.game.triggerFinisher(nearbyBot, false);
                     nearbyBot.takeDamage(999, 'body', player);
                 }
+                if (this.game.isMultiplayer) {
+                    for (const id in this.game.network.players) {
+                        if (id === this.game.network.myId) continue;
+                        const pData = this.game.network.players[id];
+                        if (!pData.state || !pData.state.alive) continue;
+                        const tp = new THREE.Vector3(...pData.state.pos).add(new THREE.Vector3(0, 1, 0));
+                        if (tp.distanceTo(player.pos) < 3.5 && pData.state.health <= 30) {
+                            this.game.triggerFinisher(tp, true);
+                            this.game.network.broadcast({ type: 'HIT', targetId: id, damage: 999, attackerId: this.game.network.myId, attackerName: this.game.network.myName });
+                            break;
+                        }
+                    }
+                }
 
                 const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
                 const range = 20;
@@ -4197,7 +4267,6 @@
                 }
 
                 if (this.game.player.pos.distanceTo(this.pos) < 15) {
-                    // Line of sight check
                     const toFlash = this.pos.clone().sub(this.game.camera.position).normalize();
                     const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.game.camera.quaternion);
                     if (toFlash.dot(forward) > 0.5) {
@@ -4262,8 +4331,8 @@
             _buildSlots() { this.slotList.innerHTML = ''; if (!this.game.player) return; this.game.player.weapons.forEach((w, i) => { if (!w) return; const el = document.createElement('div'); el.className = 'slot' + (i === 0 ? ' active' : ''); el.textContent = `[${i + 1}] ${w.kind.toUpperCase()}`; this.slotList.appendChild(el); }); }
             updateAmmo(w, idx) {
                 if (!w) return;
-                this.ammoMag.textContent = w.mag;
-                if (this.game.isMultiplayer) this.ammoRes.textContent = '/ ∞';
+                this.ammoMag.textContent = w.mag === Infinity ? '∞' : w.mag;
+                if (w.reserve === Infinity) this.ammoRes.textContent = '∞';
                 else this.ammoRes.textContent = '/ ' + w.reserve;
                 this.ammoMag.classList.toggle('low', w.mag <= Math.ceil(WEAPON_DEFS[w.kind].mag * .25));
                 this.weaponName.textContent = w.name;
@@ -4374,7 +4443,6 @@
             g.userData.arms = [armL, armR];
             g.userData.walkPhase = 0;
 
-            // Name Tag
             const canvas = document.createElement('canvas');
             canvas.width = 256; canvas.height = 64;
             const ctx = canvas.getContext('2d');
@@ -4742,19 +4810,17 @@
             }
 
             spawnTrainingDummies() {
-                const p1 = new Bot(this, new THREE.Vector3(-8, .2, -8));
-                p1.health = p1.maxHealth = 999999;
-                p1.isDummy = true;
-                this.bots.push(p1);
-
-                const p2 = new Bot(this, new THREE.Vector3(8, .2, -8));
-                p2.health = p2.maxHealth = 10;
-                p2.isDummy = true;
-                this.bots.push(p2);
-
-                const p3 = new Bot(this, new THREE.Vector3(-8, .2, 8));
-                p3.isDummy = true;
-                this.bots.push(p3);
+                const spawns = this.world.spawnPoints;
+                const types = ['INFINITE HP DUMMY', 'LOW HP DUMMY', 'COMBAT DUMMY'];
+                const healths = [999999, 10, 100];
+                for (let i = 0; i < 3; i++) {
+                    const p = spawns[i % spawns.length].clone();
+                    const bot = new Bot(this, p);
+                    bot.health = bot.maxHealth = healths[i];
+                    bot.isDummy = true;
+                    bot.dummyType = types[i];
+                    this.bots.push(bot);
+                }
             }
 
             _spawnWave() {
@@ -4916,7 +4982,7 @@
             update(dt) {
                 if (this.paused) {
                     if (this.isMultiplayer) {
-                        this.player.update(dt, true); // Update physics but freeze inputs
+                        this.player.update(dt, true);
                         this.network.update(dt);
                         this.effects.update(dt);
                         this.world.update(dt);
@@ -4999,12 +5065,30 @@
 
                 if (this.mode === 'training' && this.abilitySystem) {
                     if (this.input.hit('KeyQ')) {
-                        this.abilitySystem.held = this.abilitySystem.held === 'teleport' ? 'telekinesis' : 'teleport';
-                        this.abilitySystem.charges = 99; this.abilitySystem.maxCharges = 99; this.abilitySystem.cooldown = 0; this.abilitySystem.cooldownMax = 2;
+                        const cycle = ['teleport', 'telekinesis', 'tracker', 'lightning'];
+                        let idx = cycle.indexOf(this.abilitySystem.held);
+                        idx = (idx + 1) % cycle.length;
+                        this.abilitySystem.held = cycle[idx];
+                        this.abilitySystem.charges = 99; this.abilitySystem.maxCharges = 99;
                         this.ui.updateAbility(this.abilitySystem.held, 99, 99, 0);
                         this.ui.showCenterMsg('ABILITY', this.abilitySystem.held.toUpperCase(), 800);
                     }
-                    if (!this.abilitySystem.held) { this.abilitySystem.held = 'teleport'; this.abilitySystem.charges = 99; this.abilitySystem.maxCharges = 99; this.abilitySystem.cooldownMax = 2; this.ui.updateAbility('teleport', 99, 99, 0); }
+                    if (!this.abilitySystem.held) {
+                        this.abilitySystem.held = 'teleport'; this.abilitySystem.charges = 99; this.abilitySystem.maxCharges = 99;
+                        this.ui.updateAbility('teleport', 99, 99, 0);
+                    }
+                    this.abilitySystem.cooldown = 0;
+
+                    if (this.input.hit('KeyN')) {
+                        if (this.player.sukunaTimer > 0) {
+                            this.player.sukunaTimer = 0;
+                            this.player.weapons = this.player.savedWeapons || this.armory.equipped();
+                            this.player._buildViewModels();
+                            this.ui.showCenterMsg('SUKUNA DEACTIVATED', 'WEAPONS RESTORED', 1500);
+                        } else {
+                            this.player.activateSukuna();
+                        }
+                    }
                 }
 
                 if (!this.lockInput && this.input.hit('KeyE') && this.abilitySystem) this.abilitySystem.use();
