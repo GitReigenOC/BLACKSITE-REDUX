@@ -2295,10 +2295,10 @@
         const SaveSystem = {
             data: {
                 points: 0,
-                unlockedWeapons: ['rifle', 'shotgun', 'rocket', 'knife', 'kar98', 'smg', 'lmg', 'ak47', 'katana'],
-                unlockedCamos: ['rifle:default', 'shotgun:default', 'rocket:default', 'sniper:default', 'knife:default', 'kar98:default', 'smg:default', 'lmg:default', 'ak47:default', 'katana:default'],
+                unlockedWeapons: ['rifle', 'shotgun', 'rocket', 'knife'], // REMOVED other weapons so they start locked
+                unlockedCamos: ['rifle:default', 'shotgun:default', 'rocket:default', 'knife:default'],
                 equippedLoadout: ['rifle', 'shotgun', 'rocket', 'knife'],
-                equippedCamos: { rifle: 'default', shotgun: 'default', rocket: 'default', sniper: 'default', knife: 'default', kar98: 'default', smg: 'default', lmg: 'default', ak47: 'default', katana: 'default' },
+                equippedCamos: { rifle: 'default', shotgun: 'default', rocket: 'default', knife: 'default' },
                 settings: { volume: 0.6, musicVolume: 0.4, fov: 90, sensitivity: 1, scopeSensitivity: 0.8, invertY: false, uiColor: '#ff7a1a', skinColor: '#e8ecf0' },
                 playerName: 'OPERATOR-' + Math.floor(Math.random() * 999),
                 challenges: {},
@@ -2321,8 +2321,12 @@
                         if (!this.data.playerName) this.data.playerName = 'OPERATOR-' + Math.floor(Math.random() * 999);
                         if (!this.data.challenges) this.data.challenges = {};
                         if (!this.data.selectedSkin) this.data.selectedSkin = 'operator';
-                        const addWep = (k) => { if (!this.data.unlockedWeapons.includes(k)) this.data.unlockedWeapons.push(k); if (!this.data.unlockedCamos.includes(k + ':default')) this.data.unlockedCamos.push(k + ':default'); if (!this.data.equippedCamos[k]) this.data.equippedCamos[k] = 'default'; };
-                        addWep('knife'); addWep('kar98'); addWep('smg'); addWep('lmg'); addWep('ak47'); addWep('katana');
+
+                        // FIXED: Ensure camos exist for currently unlocked weapons, but DO NOT force-unlock weapons
+                        for (const k of this.data.unlockedWeapons) {
+                            if (!this.data.unlockedCamos.includes(k + ':default')) this.data.unlockedCamos.push(k + ':default');
+                            if (!this.data.equippedCamos[k]) this.data.equippedCamos[k] = 'default';
+                        }
                         document.documentElement.style.setProperty('--accent', this.data.settings.uiColor);
                     }
                 } catch (e) { console.error('Save load error', e); }
@@ -2804,6 +2808,7 @@
                 this._syncTimer = 0;
                 this._lastReceiveTime = {};
                 this._lastShootTime = 0;
+                this.domainQueue = [];
                 addEventListener('beforeunload', () => { try { this.broadcast({ type: 'LEAVE' }); } catch (e) { } });
             }
             host(maxPlayers, isPublic = false) {
@@ -2980,6 +2985,30 @@
                 document.getElementById('waitingLobby').classList.remove('show');
                 this.game._startGame(mode, map, true);
             }
+            processDomainIntent(playerId) {
+                if (!this.isHost) return;
+                this.domainQueue.push({ id: playerId, time: performance.now() });
+                this.domainQueue = this.domainQueue.filter(q => performance.now() - q.time < 1500);
+
+                const other = this.domainQueue.find(q => q.id !== playerId);
+                if (other) {
+                    this.broadcast({ type: 'CLASH_START', oppId: playerId, initiatorId: other.id, duration: 6 });
+                    this.broadcast({ type: 'CLASH_START', oppId: other.id, initiatorId: playerId, duration: 6 });
+                    if (playerId === this.myId) this.game.beginClash(other.id, 6);
+                    if (other.id === this.myId) this.game.beginClash(playerId, 6);
+                    this.domainQueue = [];
+                } else {
+                    setTimeout(() => {
+                        const stillValid = this.domainQueue.find(q => q.id === playerId);
+                        if (stillValid) {
+                            this.broadcast({ type: 'DOMAIN', playerId: playerId });
+                            if (playerId !== this.myId) this.game.triggerDomainExpansion(false);
+                            else this.game.triggerDomainExpansion(true);
+                            this.domainQueue = this.domainQueue.filter(q => q.id !== playerId);
+                        }
+                    }, 150);
+                }
+            }
             handlePacket(data, conn) {
                 if (!data) return;
                 if (data.type === 'LEAVE') { if (this.isHost && conn) this.handleDisconnect(conn.peer); return; }
@@ -3050,12 +3079,14 @@
                         this.game.ui.showCenterMsg("RYOMEN SUKUNA ARRIVES 8:30 PM", "", 5000);
                         audio.domain();
                     }
-                } else if (data.type === 'DOMAIN_TELEPORT') {
-                    if (this.game.player && this.game.player.alive) { this.game.player.pos.set(...data.pos); this.game.player.vel.set(0, 0, 0); this.game.player._resetViewState(); }
+                } else if (data.type === 'DOMAIN_INTENT') {
+                    this.processDomainIntent(data.playerId);
                 } else if (data.type === 'DOMAIN') {
                     if (data.playerId === this.myId) return;
                     this.game.ui.showCenterMsg("DOMAIN EXPANSION MALEVOLENT SHRINE", "", 4000);
                     this.game.triggerDomainExpansion(false);
+                } else if (data.type === 'DOMAIN_TELEPORT') {
+                    if (this.game.player && this.game.player.alive) { this.game.player.pos.set(...data.pos); this.game.player.vel.set(0, 0, 0); this.game.player._resetViewState(); }
                 } else if (data.type === 'DOMAIN_END') {
                     this.game.endDomain();
                 } else if (data.type === 'CLASH_START') {
@@ -3553,6 +3584,8 @@
                 this._resetViewState();
             }
             _resetViewState() {
+                if (!Number.isFinite(this.yaw)) this.yaw = 0;
+                if (!Number.isFinite(this.pitch)) this.pitch = 0;
                 this.pitch = 0;
                 this._strafeLean = 0;
                 this.pitchRecover = 0;
@@ -3578,7 +3611,8 @@
                 this.sukunaTimer = 35;
                 this.domainCooldown = 0;
                 this.domainUsed = false;
-                this.weapons = [this.armory._makeWeapon('dismantle'), this.armory._makeWeapon('cleave')];
+                // Only equip dismantle, cleave is now RMB
+                this.weapons = [this.armory._makeWeapon('dismantle')];
                 this._buildViewModels();
                 document.getElementById('hud').classList.add('sukuna-mode');
                 this.game.ui.showCenterMsg("RYOMEN SUKUNA ARRIVES 8:30 PM", "KING OF CURSES · DISMANTLE & CLEAVE", 4000);
@@ -3607,7 +3641,14 @@
                 this.game.ui.showCenterMsg("SUKUNA EXPIRED", "WEAPONS RESTORED", 2000);
             }
             useDomainExpansion() {
-                if (this.domainUsed) { this.game.ui.showCenterMsg("DOMAIN ON COOLDOWN", "", 1000); return; }
+                if (this.domainUsed) {
+                    if (this.game.mode === 'training') {
+                        this.domainUsed = false;
+                    } else {
+                        this.game.ui.showCenterMsg("DOMAIN ON COOLDOWN", "", 1000);
+                        return;
+                    }
+                }
                 this.domainUsed = true; this.domainCooldown = 30;
                 const g = this.game;
                 let clashOpp = null;
@@ -3615,13 +3656,25 @@
                     for (const id in g.network.players) {
                         if (id === g.network.myId) continue;
                         const p = g.network.players[id];
-                        if (p.state && (p.state.domainActive || p.state.sukuna)) { clashOpp = id; break; }
+                        if (p.state && p.state.domainActive) { clashOpp = id; break; }
                     }
                 }
-                if (clashOpp) { this.game.ui.showCenterMsg('DOMAIN CLASH', 'SPAM [SPACE] TO WIN', 2500); g.startDomainClash(clashOpp); return; }
-                this.game.ui.showCenterMsg("DOMAIN EXPANSION MALEVOLENT SHRINE", "", 5000);
-                this.game.network.broadcast({ type: 'DOMAIN', playerId: this.game.network.myId });
-                this.game.triggerDomainExpansion(true);
+                if (clashOpp) {
+                    this.game.ui.showCenterMsg('DOMAIN CLASH', 'SPAM [SPACE] TO WIN', 2500);
+                    g.startDomainClash(clashOpp);
+                    return;
+                }
+
+                if (g.network.isHost) {
+                    g.network.processDomainIntent(g.network.myId);
+                } else {
+                    g.network.broadcast({ type: 'DOMAIN_INTENT', playerId: g.network.myId });
+                }
+
+                if (!g.isMultiplayer) {
+                    this.game.ui.showCenterMsg("DOMAIN EXPANSION MALEVOLENT SHRINE", "", 5000);
+                    this.game.triggerDomainExpansion(true);
+                }
             }
             useMedkit() {
                 if (this.medkits <= 0) { audio.empty(); return false; }
@@ -3662,10 +3715,16 @@
                     if (this.flashbangCooldown <= 0) { this.flashbangs = Math.min(2, this.flashbangs + 1); this.game.ui.updateFlashbangs(this.flashbangs, 2); }
                 }
                 if (this.sukunaTimer > 0) {
-                    this.sukunaTimer -= dt;
-                    const _timerEl = document.getElementById('sukunaTimer');
-                    if (_timerEl) _timerEl.textContent = Math.max(0, this.sukunaTimer).toFixed(1) + 's';
-                    if (this.sukunaTimer <= 0) this.deactivateSukuna();
+                    if (this.game.mode !== 'training') {
+                        this.sukunaTimer -= dt;
+                        const _timerEl = document.getElementById('sukunaTimer');
+                        if (_timerEl) _timerEl.textContent = Math.max(0, this.sukunaTimer).toFixed(1) + 's';
+                        if (this.sukunaTimer <= 0) this.deactivateSukuna();
+                    } else {
+                        this.sukunaTimer = 35;
+                        const _timerEl = document.getElementById('sukunaTimer');
+                        if (_timerEl) _timerEl.textContent = '∞';
+                    }
                 }
                 if (this.perfectComboTimer > 0) { this.perfectComboTimer -= dt; if (this.perfectComboTimer <= 0) this.perfectStack = 0; }
                 if (this._jumpBuffer > 0) this._jumpBuffer -= dt;
@@ -3678,6 +3737,10 @@
                 if (this.pos.y < this.world.killY) this.game.onPlayerFell();
             }
             _look(dt) {
+                this.yaw = this.yaw % (Math.PI * 2);
+                if (!Number.isFinite(this.yaw)) this.yaw = 0;
+                if (!Number.isFinite(this.pitch)) this.pitch = 0;
+
                 const w = this.currentWeapon;
                 const baseSens = this.input.sensitivity * .0022;
                 const scopeSens = (SaveSystem.data.settings.scopeSensitivity || 0.8);
@@ -3831,7 +3894,11 @@
                     this.game.ui.showCenterMsg('DUMMY SPAWNED', '', 800);
                 }
                 if (this.input.hit('KeyE') && this.sukunaTimer > 0) this.useDomainExpansion();
-                if (weapon.kind === 'katana' && this.input.right && !this._prevRight) {
+
+                // Streamlined Controls: RMB always Cleaves during Sukuna
+                if (this.sukunaTimer > 0 && this.input.right && !this._prevRight) {
+                    this.performCleave();
+                } else if (weapon.kind === 'katana' && this.input.right && !this._prevRight) {
                     if (this.parryCooldown <= 0) {
                         this.parryTimer = 0.9;
                         this.parryCooldown = 6;
@@ -3841,8 +3908,6 @@
                     } else {
                         this.game.ui.showCenterMsg('PARRY COOLDOWN', Math.ceil(this.parryCooldown) + 's', 800);
                     }
-                } else if (weapon.kind === 'cleave' && this.input.right && !this._prevRight) {
-                    this.performCleave();
                 }
                 this._prevRight = this.input.right;
                 let shouldFire = weapon.auto ? this.input.left : (this.input.left && !weapon._prevLeft);
@@ -3864,7 +3929,7 @@
                 if (this.input.hit('Digit4')) this.game.armory.equip(this, 3);
                 if (this.input.hit('Digit5')) this.game.armory.equip(this, 4);
                 if (this.input.wheel !== 0) { const idx = (this.currentWeaponIdx + (this.input.wheel > 0 ? 1 : -1) + this.weapons.length) % this.weapons.length; this.game.armory.equip(this, idx); }
-                const adsTarget = this.input.right && weapon.kind !== 'knife' && weapon.kind !== 'katana' && weapon.kind !== 'cleave' ? 1 : 0;
+                const adsTarget = this.input.right && weapon.kind !== 'knife' && weapon.kind !== 'katana' && weapon.kind !== 'cleave' && weapon.kind !== 'dismantle' ? 1 : 0;
                 weapon.adsAmount = damp(weapon.adsAmount, adsTarget, 14, dt);
                 if (this._tpFovT < 0) {
                     const base = this.game.baseFov || 90;
@@ -3945,6 +4010,10 @@
             _updateViewModel(dt) {
                 const w = this.currentWeapon; if (!w) return;
                 const vg = this.weaponGroups[this.currentWeaponIdx]; if (!vg) return;
+
+                // FIXED: Hide the messy viewmodel during Sukuna
+                if (w.kind === 'dismantle') { vg.visible = false; return; }
+
                 const ads = w.adsAmount;
                 this.weaponGroups.forEach((g, i) => { if (i !== this.currentWeaponIdx) g.visible = false; });
                 if (w.kind === 'sniper' && ads > 0.6) { vg.position.set(0, -10, 0); vg.visible = false; return; }
@@ -4268,13 +4337,23 @@
                 this.speed = 170;
                 this.life = 1.0;
                 this.damage = 50;
-                const geo = new THREE.PlaneGeometry(1.1, 5);
-                const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 1, blending: THREE.AdditiveBlending });
+
+                // Updated VFX: black core, red glow, white outline
+                const outlineGeo = new THREE.PlaneGeometry(1.3, 5.4);
+                const outlineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending });
+                const glowGeo = new THREE.PlaneGeometry(1.1, 5.0);
+                const glowMat = new THREE.MeshBasicMaterial({ color: 0xff2020, side: THREE.DoubleSide, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
                 const innerGeo = new THREE.PlaneGeometry(0.95, 4.6);
                 const innerMat = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide, transparent: true, opacity: 1 });
+
+                const outline = new THREE.Mesh(outlineGeo, outlineMat);
+                const glow = new THREE.Mesh(glowGeo, glowMat);
                 const inner = new THREE.Mesh(innerGeo, innerMat);
                 inner.position.z = 0.01;
-                this.mesh = new THREE.Mesh(geo, mat);
+                glow.position.z = 0.005;
+
+                this.mesh = new THREE.Mesh(glowGeo, glowMat);
+                this.mesh.add(outline);
                 this.mesh.add(inner);
                 this.mesh.position.copy(this.pos);
                 this.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), this.dir);
@@ -4383,7 +4462,19 @@
                 add('head', .34, .36, .34, 1.68); add('body', .62, .75, .38, 1.15); add('limb', .7, .75, .32, .55); add('limb', .95, .6, .25, 1.1);
             }
             getDamageNumberPos(part) { const y = part === 'head' ? 1.7 : part === 'limb' ? .6 : 1.2; return this.mesh.position.clone().add(new THREE.Vector3(0, y, 0)); }
-            takeDamage(dmg, part, attacker) { if (!this.alive) return; this.health -= dmg; this.hitFlash = .12; if (this.health <= 0) { this.alive = false; this.deathTimer = 1.2; this.game.onBotKilled(this, part, attacker); } }
+            takeDamage(dmg, part, attacker) {
+                if (!this.alive) return;
+                this.health -= dmg;
+                this.hitFlash = .12;
+                if (this.health <= 0) {
+                    this.alive = false;
+                    this.deathTimer = 1.2;
+                    this.game.onBotKilled(this, part, attacker);
+                    if (attacker && attacker.currentWeapon && attacker.currentWeapon.kind === 'dismantle') {
+                        this.game.effects.sliceBotInHalf(this);
+                    }
+                }
+            }
             _groundAhead(dirX, dirZ) {
                 const ahead = this.pos.clone().add(new THREE.Vector3(dirX * 4.5, 0, dirZ * 4.5));
                 const from = ahead.clone(); from.y += 3;
@@ -4394,9 +4485,11 @@
             update(dt) {
                 if (!this.alive) {
                     this.deathTimer -= dt;
-                    this.mesh.rotation.z = damp(this.mesh.rotation.z, Math.PI / 2, 8, dt);
-                    this.mesh.position.y -= dt * 1.5;
-                    if (this.game.mode === 'training' && this.deathTimer <= 0) { this.alive = true; this.health = this.maxHealth; this.mesh.rotation.z = 0; this.mesh.position.copy(this.pos); this.toastedTimer = 0; }
+                    if (!this.isSliced) {
+                        this.mesh.rotation.z = damp(this.mesh.rotation.z, Math.PI / 2, 8, dt);
+                        this.mesh.position.y -= dt * 1.5;
+                    }
+                    if (this.game.mode === 'training' && this.deathTimer <= 0) { this.alive = true; this.health = this.maxHealth; this.mesh.rotation.z = 0; this.mesh.position.copy(this.pos); this.toastedTimer = 0; this.isSliced = false; this.mesh.visible = true; }
                     return;
                 }
                 if (this.toastedTimer > 0) {
@@ -4652,6 +4745,53 @@
                 g.position.copy(pos); g.rotation.set(rand(-1, 1), rand(-1, 1), rand(-1, 1));
                 this.game.scene.add(g);
                 this.impacts.push({ mesh: g, vel: new THREE.Vector3(0, 0, 0), life: 0.5, maxLife: 0.5, geo: glow.geometry, mat: glow.material, gravity: 0 });
+            }
+            sliceBotInHalf(bot) {
+                if (bot.isSliced) return;
+                bot.isSliced = true;
+                bot.mesh.visible = false;
+
+                const planeNormal = new THREE.Vector3(1, 0.2, 0).normalize();
+                const planeConstant = -planeNormal.dot(bot.mesh.position);
+                const clipA = new THREE.Plane(planeNormal.clone(), planeConstant);
+                const clipB = new THREE.Plane(planeNormal.clone().negate(), -planeConstant);
+
+                const meshA = bot.mesh.clone();
+                const meshB = bot.mesh.clone();
+
+                meshA.traverse(o => { if (o.material) { o.material = o.material.clone(); o.material.clippingPlanes = [clipA]; o.material.clipShadows = true; } });
+                meshB.traverse(o => { if (o.material) { o.material = o.material.clone(); o.material.clippingPlanes = [clipB]; o.material.clipShadows = true; } });
+
+                meshA.position.copy(bot.mesh.position);
+                meshA.rotation.copy(bot.mesh.rotation);
+                meshB.position.copy(bot.mesh.position);
+                meshB.rotation.copy(bot.mesh.rotation);
+
+                this.game.scene.add(meshA);
+                this.game.scene.add(meshB);
+
+                let time = 0;
+                const fall = () => {
+                    time += 0.016;
+                    const offset = time * 0.5;
+                    meshA.position.add(new THREE.Vector3(planeNormal.x * offset, -offset, planeNormal.z * offset));
+                    meshB.position.add(new THREE.Vector3(-planeNormal.x * offset, -offset, -planeNormal.z * offset));
+                    meshA.rotation.x += 0.05;
+                    meshB.rotation.x -= 0.05;
+
+                    if (time < 1.5) requestAnimationFrame(fall);
+                    else {
+                        this.game.scene.remove(meshA);
+                        this.game.scene.remove(meshB);
+                        meshA.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+                        meshB.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+                    }
+                };
+                fall();
+
+                const pos = bot.mesh.position.clone().add(new THREE.Vector3(0, 1, 0));
+                window.sukunaSlashVfx(pos, 'dismantle');
+                this.bloodExplosion(pos);
             }
             update(dt) {
                 if (this.muzzleTimer > 0) { this.muzzleTimer -= dt; if (this.muzzleTimer <= 0) this.muzzleLight.intensity = 0; }
@@ -4936,12 +5076,10 @@
                 this.game.effects.teleportBurst(this.pos, 0xffffff);
                 this.game.showFlash(1.0, 200);
                 if (this.game.isMultiplayer) this.game.network.broadcast({ type: 'FLASH', pos: [this.pos.x, this.pos.y, this.pos.z] });
-                // Confusion to nearby bots
                 for (const b of this.game.bots) {
                     if (!b.alive) continue;
                     if (b.pos.distanceTo(this.pos) < 15) b.confusedTimer = 3.0;
                 }
-                // Local player flash
                 if (this.game.player.pos.distanceTo(this.pos) < 15) {
                     const toFlash = this.pos.clone().sub(this.game.camera.position).normalize();
                     const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.game.camera.quaternion);
@@ -5127,6 +5265,7 @@
                 this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
                 this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.6;
                 this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+                this.renderer.localClippingEnabled = true; // For Dismantle finisher
                 this.scene = new THREE.Scene();
                 this.camera = new THREE.PerspectiveCamera(SaveSystem.data.settings.fov || 90, innerWidth / innerHeight, .05, 400);
                 this.scene.add(this.camera);
@@ -5246,7 +5385,6 @@
                 $('setSens').value = this.input.sensitivity; $('setSensVal').textContent = parseFloat(this.input.sensitivity).toFixed(2);
                 $('setScopeSens').value = SaveSystem.data.settings.scopeSensitivity; $('setScopeSensVal').textContent = parseFloat(SaveSystem.data.settings.scopeSensitivity).toFixed(2);
                 $('setInv').checked = this.input.invertY;
-                // Skin picker
                 let skinWrap = document.getElementById('skinPick');
                 if (!skinWrap) { skinWrap = document.createElement('div'); skinWrap.id = 'skinPick'; const grid = document.querySelector('#settingsPanel .settingsGrid'); grid.parentElement.insertBefore(skinWrap, grid.nextSibling); }
                 skinWrap.innerHTML = '<div style="font-size:11px;letter-spacing:3px;color:#5f6f82;margin:14px 0 6px">PLAYER SKIN</div>';
@@ -5544,6 +5682,7 @@
                 this.domainReturnPos = this.player.pos.clone();
                 const top = this._shrineTop();
                 this.player.pos.set(top.x, top.y + 1, top.z); this.player.vel.set(0, 0, 0);
+                this.player.yaw = 0; // hard reset yaw to prevent spin
                 this.player._resetViewState();
                 if (this.isMultiplayer) this.network.broadcast({ type: 'DOMAIN_TELEPORT', pos: [top.x, top.y + 1, top.z] });
                 for (const b of this.bots) { if (b.alive) { b.takeDamage(30, 'body', this.player); this.effects.damageNumber(b.getDamageNumberPos('body'), 30, false); } }
