@@ -1,219 +1,1873 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
     <title>BLACKSITE-REDUX</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2304060a'/%3E%3Crect x='6' y='6' width='52' height='52' fill='none' stroke='%23ff7a1a' stroke-width='2.5'/%3E%3Cpath d='M16 44 L32 16 L48 44 Z' fill='none' stroke='%23ff7a1a' stroke-width='2.5'/%3E%3Ccircle cx='32' cy='38' r='3' fill='%23ff7a1a'/%3E%3C/svg%3E">
+    <link rel="icon"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2304060a'/%3E%3Crect x='6' y='6' width='52' height='52' fill='none' stroke='%23ff7a1a' stroke-width='2.5'/%3E%3Cpath d='M16 44 L32 16 L48 44 Z' fill='none' stroke='%23ff7a1a' stroke-width='2.5'/%3E%3Ccircle cx='32' cy='38' r='3' fill='%23ff7a1a'/%3E%3C/svg%3E">
     <style>
-        :root { --accent: #ff7a1a; --accent-dim: rgba(255,122,26,.28); }
-        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none }
-        html, body { width: 100%; height: 100%; overflow: hidden; background: #04060a; color: #dfe8f2; font-family: "Bahnschrift", "DIN Alternate", "Arial Narrow", system-ui, sans-serif }
-        canvas#game { position: fixed; inset: 0; display: block; width: 100%; height: 100% }
-        .hidden { display: none !important }
-        .mono { font-variant-numeric: tabular-nums }
-        .accent { color: var(--accent) }
-        #flashOverlay { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 999; transition: opacity 0.1s; }
-        #flashOverlay.show { opacity: 1; transition: opacity 0.05s; }
-        #flashOverlay.fade { opacity: 0; transition: opacity 3s; }
-        #whiteFlash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 100; transition: opacity .15s }
-        #menu { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: linear-gradient(100deg, rgba(3,5,8,.94) 0%, rgba(3,5,8,.82) 34%, rgba(3,5,8,.15) 65%, rgba(3,5,8,.72) 100%) }
-        #menu::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0,0,0,.24) 0 1px, transparent 1px 3px); opacity: .22; mix-blend-mode: multiply }
-        #menu .topbar { display: flex; justify-content: space-between; align-items: flex-start; padding: 34px 46px 0 }
-        .brand h1 { font-size: 56px; line-height: .92; letter-spacing: 9px; font-weight: 800; color: #f4f8fc; text-shadow: 0 0 26px rgba(255,122,26,.35), 0 3px 0 rgba(0,0,0,.6) }
-        .brand h1 span { color: var(--accent); text-shadow: 0 0 30px var(--accent) }
-        .brand .sub { margin-top: 10px; font-size: 12px; letter-spacing: 6px; color: #6d7f94 }
-        .brand .rule { width: 300px; height: 2px; margin-top: 12px; background: linear-gradient(90deg, var(--accent), rgba(255,122,26,0)) }
-        .meta { text-align: right; font-size: 12px; letter-spacing: 3px; color: #6d7f94; line-height: 2 }
-        .meta b { color: var(--accent) }
-        .mid { flex: 1; display: flex; align-items: center; padding: 0 46px }
-        .menu-nav { display: flex; flex-direction: column; gap: 2px }
-        .menu-nav button { position: relative; width: 400px; padding: 13px 26px; border: 0; text-align: left; cursor: pointer; background: linear-gradient(90deg, rgba(255,122,26,.07), rgba(255,122,26,0)); border-left: 3px solid var(--accent-dim); color: #b9c8d8; font: inherit; font-size: 18px; font-weight: 600; letter-spacing: 4px; text-transform: uppercase; transition: .14s; clip-path: polygon(0 0, 100% 0, 97.5% 100%, 0 100%) }
-        .menu-nav button small { display: block; font-size: 10px; letter-spacing: 2px; color: #5d6c7e; font-weight: 400; margin-top: 3px }
-        .menu-nav button:hover { color: #fff; transform: translateX(8px); background: linear-gradient(90deg, rgba(255,122,26,.32), rgba(255,122,26,.02)); border-left-color: var(--accent) }
-        .menu-nav button:hover small { color: var(--accent) }
-        .footbar { display: flex; justify-content: space-between; padding: 0 46px 26px; font-size: 11px; letter-spacing: 3px; color: #4d5a6b }
-        .footbar b { color: #8ea2b8 }
-        .panel { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; background: rgba(2,4,7,.86); backdrop-filter: blur(6px) }
-        .panel .frame { width: min(1040px, 92vw); max-height: 86vh; overflow: auto; background: linear-gradient(160deg, rgba(14,19,26,.98), rgba(8,11,16,.98)); border: 1px solid var(--accent-dim); box-shadow: 0 0 70px rgba(255,122,26,.09), inset 0 0 60px rgba(0,0,0,.6); padding: 30px 34px 34px }
-        .panel h2 { font-size: 26px; letter-spacing: 7px; color: var(--accent); font-weight: 800; margin-bottom: 4px }
-        .panel .hintline { font-size: 11px; letter-spacing: 3px; color: #5f6f82; margin-bottom: 22px }
-        .row { display: flex; gap: 14px; flex-wrap: wrap }
-        .btn { padding: 12px 26px; border: 1px solid var(--accent-dim); background: rgba(255,122,26,.08); color: #ffd0a6; font: inherit; font-size: 14px; letter-spacing: 3px; font-weight: 600; cursor: pointer; text-transform: uppercase; transition: .15s; clip-path: polygon(0 0, 100% 0, 96% 100%, 0 100%) }
-        .btn:hover { background: rgba(255,122,26,.28); color: #fff; border-color: var(--accent) }
-        .btn.ghost { border-color: rgba(140,170,200,.3); background: rgba(140,170,200,.05); color: #9fb2c6 }
-        .btn.ghost:hover { background: rgba(140,170,200,.18); color: #fff; border-color: #9fb2c6 }
-        .btn:disabled { opacity: .35; cursor: not-allowed }
-        input.codeInput, select.codeInput { width: 100%; padding: 14px 18px; background: #0a0f14; border: 1px solid var(--accent-dim); color: #fff; font: inherit; font-size: 15px; letter-spacing: 3px; text-align: center; text-transform: uppercase; user-select: text; cursor: pointer }
-        input.codeInput:focus, select.codeInput:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 12px rgba(255,122,26,.4) }
-        input[type=range] { width: 100%; accent-color: var(--accent) }
-        input[type=color] { width: 100%; height: 40px; border: 1px solid var(--accent); background: none; cursor: pointer; }
-        .settingsGrid { display: grid; grid-template-columns: 200px 1fr 80px; gap: 16px; align-items: center; font-size: 13px; letter-spacing: 2px }
-        .settingsGrid label { color: #9fb2c6 }
-        .settingsGrid span { color: var(--accent); font-variant-numeric: tabular-nums; text-align: right }
-        #hud { position: fixed; inset: 0; z-index: 20; pointer-events: none }
-        #hud.cinematic #healthBlock, #hud.cinematic #ammoBlock, #hud.cinematic #crosshair, #hud.cinematic #abilityHud, #hud.cinematic #hitmarker, #hud.cinematic #buffBar, #hud.cinematic #killfeed, #hud.cinematic #medkitBlock, #hud.cinematic #flashBlock { display: none !important }
-        #hud.sukuna-mode #healthBlock, #hud.sukuna-mode #ammoBlock, #hud.sukuna-mode #crosshair, #hud.sukuna-mode #abilityHud, #hud.sukuna-mode #hitmarker, #hud.sukuna-mode #buffBar, #hud.sukuna-mode #killfeed, #hud.sukuna-mode #medkitBlock, #hud.sukuna-mode #flashBlock, #hud.sukuna-mode #slotList, #hud.sukuna-mode #reloadBar { display: none !important; }
-        #sukunaHud { position: absolute; inset: 0; pointer-events: none; display: none; z-index: 30; }
-        #hud.sukuna-mode #sukunaHud { display: block; }
-        .sukuna-skill { position: absolute; bottom: 40px; min-width: 190px; padding: 10px 16px; border: 1px solid #fff; background: rgba(0,0,0,.72); color: #fff; font-size: 12px; letter-spacing: 3px; text-align: center; box-shadow: 0 0 18px rgba(255,255,255,.12); }
-        .sukuna-skill.active { background: rgba(255,0,0,.28); border-color: #ff3b3b; color: #ffbdbd; }
-        #sukunaDismantle { left: 50%; transform: translateX(-110%); }
-        #sukunaCleave { left: 50%; transform: translateX(10%); }
-        #sukunaDomain { left: 50%; transform: translateX(-50%); bottom: 108px; border-color: #ff3b3b; color: #ffbdbd; min-width: 240px; }
-        #sukunaTimer { position: absolute; top: 90px; left: 50%; transform: translateX(-50%); font-size: 14px; letter-spacing: 6px; color: #ff3b3b; text-shadow: 0 0 16px #ff3b3b; font-weight: 700; }
-        #scopeOverlay { position: absolute; inset: 0; opacity: 0; pointer-events: none; transition: opacity .1s; z-index: 12 }
-        #scopeOverlay.active { opacity: 1 }
-        #scopeOverlay .scope-backdrop { position: absolute; inset: 0; background: radial-gradient(circle at center, transparent 0, transparent 29.5vh, #000 30vh) }
-        #scopeOverlay .scope-ring { position: absolute; left: 50%; top: 50%; width: 60vh; height: 60vh; transform: translate(-50%, -50%); border-radius: 50%; border: 2px solid rgba(0,0,0,.95); box-shadow: inset 0 0 140px rgba(0,0,0,.9), inset 0 0 30px rgba(0,0,0,.85) }
-        #scopeOverlay .scope-line-h { position: absolute; left: -50vw; right: -50vw; top: 50%; height: 1px; background: rgba(0,0,0,.92) }
-        #scopeOverlay .scope-line-v { position: absolute; top: -50vh; bottom: -50vh; left: 50%; width: 1px; background: rgba(0,0,0,.92) }
-        #scopeOverlay .scope-info { position: absolute; left: 50%; bottom: calc(50% - 22vh); transform: translateX(-50%); display: flex; gap: 22px; font-size: 11px; letter-spacing: 3px; color: #7d8fa4; white-space: nowrap }
-        #scopeOverlay .scope-info b { color: var(--accent) }
-        #crosshair { position: absolute; left: 50%; top: 50%; width: 0; height: 0; --bloom: 0px }
-        #crosshair .ch { position: absolute; background: #eaf4ff; box-shadow: 0 0 6px rgba(0,0,0,.95) }
-        #crosshair .t { width: 2px; height: 9px; left: -1px; top: calc(-11px - var(--bloom)) }
-        #crosshair .b { width: 2px; height: 9px; left: -1px; top: calc(2px + var(--bloom)) }
-        #crosshair .l { height: 2px; width: 9px; top: -1px; left: calc(-11px - var(--bloom)) }
-        #crosshair .r { height: 2px; width: 9px; top: -1px; left: calc(2px + var(--bloom)) }
-        #crosshair .dot { width: 3px; height: 3px; left: -1.5px; top: -1.5px; border-radius: 50% }
-        #hitmarker { position: absolute; left: 50%; top: 50%; width: 0; height: 0; opacity: 0; pointer-events: none }
-        #hitmarker span { position: absolute; width: 11px; height: 2px; background: #fff; box-shadow: 0 0 6px #000 }
-        #hitmarker span:nth-child(1) { transform: rotate(45deg) translate(9px, 0) }
-        #hitmarker span:nth-child(2) { transform: rotate(-45deg) translate(9px, 0) }
-        #hitmarker span:nth-child(3) { transform: rotate(45deg) translate(-9px, 0) }
-        #hitmarker span:nth-child(4) { transform: rotate(-45deg) translate(-9px, 0) }
-        #hitmarker.show { animation: hm .22s ease-out }
-        #hitmarker.head span { background: #ff4d4d; box-shadow: 0 0 10px #ff2b2b }
-        @keyframes hm { 0% { opacity: 1; transform: scale(1.25) } 100% { opacity: 0; transform: scale(1) } }
-        #vignette { position: absolute; inset: 0; opacity: 0; transition: opacity .28s; background: radial-gradient(ellipse at center, transparent 42%, rgba(190,20,20,.72) 100%) }
-        #healthBlock { position: absolute; left: 38px; bottom: 34px; width: 250px }
-        #healthBlock .label { font-size: 10px; letter-spacing: 4px; color: #7d8fa4; margin-bottom: 6px }
-        #healthBlock .bar { height: 9px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.13); overflow: hidden; clip-path: polygon(0 0, 100% 0, 98% 100%, 0 100%) }
-        #healthFill { height: 100%; width: 100%; background: linear-gradient(90deg, #3fe08a, #8effc4); transition: width .12s, background .2s }
-        #healthNum { position: absolute; right: 0; top: -3px; font-size: 26px; font-weight: 800; color: #eaf4ff; text-shadow: 0 2px 8px rgba(0,0,0,.8) }
-        #medkitBlock { position: absolute; left: 38px; bottom: 108px; display: flex; align-items: center; gap: 10px; padding: 7px 14px 7px 10px; background: linear-gradient(135deg, rgba(20,60,40,.55), rgba(10,30,20,.55)); border: 1px solid rgba(63,224,138,.5); box-shadow: 0 0 20px rgba(63,224,138,.15); transition: opacity .2s, border-color .2s }
-        #medkitBlock.empty { opacity: .45; border-color: rgba(120,140,155,.3); box-shadow: none }
-        #medkitBlock .medkit-icon { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; color: #3fe08a; background: rgba(63,224,138,.12); border: 1px solid rgba(63,224,138,.4); line-height: 1 }
-        #medkitBlock.empty .medkit-icon { color: #63758a; background: rgba(120,140,155,.08); border-color: rgba(120,140,155,.3) }
-        #medkitBlock .medkit-info { display: flex; flex-direction: column; gap: 1px }
-        #medkitBlock .medkit-label { font-size: 9px; letter-spacing: 3px; color: #7d8fa4 }
-        #medkitBlock .medkit-count { font-size: 13px; letter-spacing: 2px; font-weight: 700; color: #3fe08a }
-        #medkitBlock.empty .medkit-count { color: #63758a }
-        #flashBlock { position: absolute; left: 38px; bottom: 155px; display: flex; align-items: center; gap: 10px; padding: 7px 14px 7px 10px; background: linear-gradient(135deg, rgba(60,60,60,.55), rgba(30,30,30,.55)); border: 1px solid rgba(200,200,200,.5); box-shadow: 0 0 20px rgba(200,200,200,.15); transition: opacity .2s, border-color .2s }
-        #flashBlock.empty { opacity: .45; border-color: rgba(120,140,155,.3); box-shadow: none }
-        #flashBlock .medkit-icon { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; color: #fff; background: rgba(200,200,200,.12); border: 1px solid rgba(200,200,200,.4); line-height: 1 }
-        #flashBlock.empty .medkit-icon { color: #63758a; background: rgba(120,140,155,.08); border-color: rgba(120,140,155,.3) }
-        #flashBlock .medkit-info { display: flex; flex-direction: column; gap: 1px }
-        #flashBlock .medkit-label { font-size: 9px; letter-spacing: 3px; color: #7d8fa4 }
-        #flashBlock .medkit-count { font-size: 13px; letter-spacing: 2px; font-weight: 700; color: #fff }
-        #flashBlock.empty .medkit-count { color: #63758a }
-        #ammoBlock { position: absolute; right: 38px; bottom: 34px; text-align: right; min-width: 250px }
-        #weaponName { font-size: 12px; letter-spacing: 4px; color: #8ea2b8; margin-bottom: 2px }
-        .ammoRow { display: flex; align-items: baseline; justify-content: flex-end; gap: 6px }
-        #ammoMag { font-size: 46px; font-weight: 800; line-height: 1; color: #fff; text-shadow: 0 3px 12px rgba(0,0,0,.8) }
-        #ammoMag.low { color: #ff5a3c }
-        #ammoRes { font-size: 16px; color: #7488a0; letter-spacing: 2px }
-        #reloadBar { height: 4px; background: rgba(255,255,255,.1); margin-top: 8px; opacity: 0; transition: opacity .1s }
-        #reloadBar.on { opacity: 1 }
-        #reloadFill { height: 100%; width: 0%; background: var(--accent); box-shadow: 0 0 10px var(--accent) }
-        #slotList { display: flex; gap: 6px; justify-content: flex-end; margin-top: 10px; flex-wrap: wrap }
-        .slot { font-size: 9px; letter-spacing: 1px; padding: 4px 7px; border: 1px solid rgba(255,255,255,.13); color: #63758a; background: rgba(255,255,255,.03) }
-        .slot.active { border-color: var(--accent); color: var(--accent); background: rgba(255,122,26,.16) }
-        #topInfo { position: absolute; left: 38px; top: 30px; line-height: 1.5 }
-        #modeLabel { font-size: 11px; letter-spacing: 5px; color: var(--accent) }
-        #waveLabel { font-size: 24px; font-weight: 800; letter-spacing: 3px; color: #eaf4ff }
-        #enemyLabel { font-size: 12px; letter-spacing: 3px; color: #7d8fa4 }
-        #killfeed { position: absolute; right: 34px; top: 30px; width: 330px; display: flex; flex-direction: column; align-items: flex-end; gap: 5px }
-        .kf { font-size: 12px; letter-spacing: 2px; padding: 6px 11px; background: linear-gradient(90deg, rgba(255,122,26,0), rgba(255,122,26,.16)); border-right: 2px solid var(--accent); color: #ffd7b3; animation: kfin .2s ease-out }
-        .kf.head { border-right-color: #ff3b3b; color: #ffbdbd; background: linear-gradient(90deg, rgba(255,59,59,0), rgba(255,59,59,.2)) }
-        @keyframes kfin { from { opacity: 0; transform: translateX(26px) } to { opacity: 1; transform: none } }
-        #killSkull { position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%) scale(.4); font-size: 90px; color: #ff2b2b; opacity: 0; filter: drop-shadow(0 0 26px rgba(255,43,43,.95)) }
-        #killSkull.pop { animation: skull .85s cubic-bezier(.2,.9,.25,1) forwards }
-        @keyframes skull { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.3) rotate(-14deg) } 18% { opacity: 1; transform: translate(-50%,-50%) scale(1.18) rotate(4deg) } 55% { opacity: 1; transform: translate(-50%,-50%) scale(1) } 100% { opacity: 0; transform: translate(-50%,-58%) scale(1.6) } }
-        #buffBar { position: absolute; left: 50%; bottom: 100px; transform: translateX(-50%); display: flex; gap: 8px; flex-wrap: wrap; justify-content: center }
-        .buff { font-size: 10px; letter-spacing: 2px; padding: 5px 12px; color: #0a0f14; font-weight: 700; background: linear-gradient(90deg, var(--accent), #ffb877); box-shadow: 0 0 20px var(--accent-dim) }
-        #damageNums { position: absolute; inset: 0; overflow: hidden }
-        .dnum { position: absolute; font-size: 16px; font-weight: 800; color: #fff; text-shadow: 0 2px 8px #000; animation: dnum .7s ease-out forwards }
-        .dnum.head { color: #ff5252; font-size: 21px }
-        @keyframes dnum { 0% { opacity: 1; transform: translate(-50%,-50%) scale(.6) } 30% { transform: translate(-50%,-90%) scale(1.15) } 100% { opacity: 0; transform: translate(-50%,-150%) scale(.95) } }
-        #centerMsg { position: fixed; left: 50%; top: 26%; transform: translate(-50%, -50%); z-index: 40; text-align: center; pointer-events: none; opacity: 0; transition: opacity .3s }
-        #centerMsg.show { opacity: 1 }
-        #centerMsg .big { font-size: 44px; font-weight: 800; letter-spacing: 8px; color: #fff; text-shadow: 0 0 34px var(--accent) }
-        #centerMsg .small { font-size: 13px; letter-spacing: 5px; color: var(--accent); margin-top: 6px }
-        #countdown { position: fixed; left: 50%; top: 40%; transform: translate(-50%, -50%); z-index: 45; font-size: 120px; font-weight: 900; color: var(--accent); text-shadow: 0 0 40px var(--accent), 0 4px 0 #000; pointer-events: none; opacity: 0; transition: opacity .2s }
-        #countdown.show { opacity: 1; animation: cdPulse .9s ease-out }
-        @keyframes cdPulse { 0% { transform: translate(-50%,-50%) scale(1.6); opacity: 0 } 20% { transform: translate(-50%,-50%) scale(1); opacity: 1 } 80% { transform: translate(-50%,-50%) scale(1); opacity: 1 } 100% { transform: translate(-50%,-50%) scale(.85); opacity: 0 } }
-        #abilityHud { position: absolute; left: 38px; bottom: 200px; display: flex; gap: 10px; align-items: center }
-        #abilitySlot { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: linear-gradient(135deg, rgba(160,60,220,.3), rgba(80,20,120,.4)); border: 1px solid rgba(180,100,255,.6); box-shadow: 0 0 20px rgba(180,100,255,.3) }
-        #abilityKey { font-size: 11px; color: #c9a6ff; border: 1px solid rgba(180,100,255,.6); padding: 3px 7px; letter-spacing: 1px }
-        #abilityIcon { font-size: 16px; color: #e8d5ff; font-weight: 700; letter-spacing: 2px }
-        #abilityCharges { font-size: 11px; color: #b890ff; letter-spacing: 1px }
-        #abilityCdBar { width: 100px; height: 4px; background: rgba(255,255,255,.1) }
-        #abilityCdFill { height: 100%; width: 0%; background: linear-gradient(90deg, #a03cff, #e8a0ff); transition: width .1s }
-        #clickHint { position: fixed; inset: 0; z-index: 25; display: none; align-items: center; justify-content: center; pointer-events: none }
-        #clickHint.show { display: flex }
-        #clickHint span { font-size: 14px; letter-spacing: 4px; color: var(--accent); padding: 12px 24px; background: rgba(3,5,8,.8); border: 1px solid var(--accent-dim); animation: pulse 1.5s infinite }
-        @keyframes pulse { 0%, 100% { opacity: .7 } 50% { opacity: 1 } }
-        .shopGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 14px }
-        .shopCard { background: linear-gradient(160deg, rgba(255,255,255,.05), rgba(255,255,255,.015)); border: 1px solid rgba(255,255,255,.09); padding: 16px; transition: .15s }
-        .shopCard:hover { border-color: var(--accent-dim); background: rgba(255,122,26,.07) }
-        .shopCard h3 { font-size: 14px; letter-spacing: 2px; color: #eaf4ff; margin-bottom: 6px }
-        .shopCard p { font-size: 11px; color: #7d8fa4; line-height: 1.5; min-height: 32px }
-        .shopCard .price { margin-top: 10px; font-size: 13px; color: var(--accent); letter-spacing: 2px }
-        .shopCard .btn { width: 100%; margin-top: 10px; text-align: center; padding: 9px }
-        .shopCard.owned { border-color: rgba(63,224,138,.45) }
-        .shopCard.owned .price { color: #3fe08a }
-        .shopCard.equipped { border-color: var(--accent); background: rgba(255,122,26,.12) }
-        .srvTable { width: 100%; border-collapse: collapse; font-size: 13px }
-        .srvTable th { text-align: left; font-size: 10px; letter-spacing: 3px; color: #5f6f82; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,.1); font-weight: 400 }
-        .srvTable td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,.05); color: #b9c8d8 }
-        .srvTable tr { cursor: pointer }
-        .srvTable tbody tr:hover { background: rgba(255,122,26,.12) }
-        .srvTable .ping { color: #3fe08a }
-        .srvTable .you { color: var(--accent); font-weight: 600 }
-        .srvTable .offline { color: #5a6a7a; font-style: italic }
-        #serverCodeBox { font-size: 22px; letter-spacing: 6px; color: var(--accent); padding: 12px; background: rgba(255,122,26,.08); border: 1px solid var(--accent-dim); text-align: center; user-select: text; pointer-events: auto; cursor: text; font-variant-numeric: tabular-nums; margin: 12px 0 }
-        .mapGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px }
-        .mapCard { background: linear-gradient(160deg, rgba(255,255,255,.05), rgba(255,255,255,.015)); border: 1px solid rgba(255,255,255,.09); padding: 16px; cursor: pointer; transition: .15s }
-        .mapCard:hover { border-color: var(--accent-dim) }
-        .mapCard.selected { border-color: var(--accent); background: rgba(255,122,26,.12); box-shadow: 0 0 20px rgba(255,122,26,.2) }
-        .mapCard h3 { font-size: 14px; letter-spacing: 2px; color: #eaf4ff; margin-bottom: 6px }
-        .mapCard p { font-size: 11px; color: #7d8fa4; line-height: 1.5 }
-        .mpHint { font-size: 11px; letter-spacing: 2px; color: #7d8fa4; line-height: 1.7; margin-bottom: 16px; padding: 12px; background: rgba(255,122,26,.06); border-left: 2px solid var(--accent) }
-        .mpHint b { color: var(--accent) }
-        #leaderboardOverlay { position: fixed; inset: 0; z-index: 80; display: none; align-items: center; justify-content: center; background: rgba(2,4,7,.85); backdrop-filter: blur(4px); pointer-events: none }
-        #leaderboardOverlay.show { display: flex }
-        .lbFrame { width: min(900px, 90vw); background: linear-gradient(160deg, rgba(14,19,26,.98), rgba(8,11,16,.98)); border: 1px solid var(--accent-dim); box-shadow: 0 0 50px rgba(255,122,26,.15); padding: 20px 30px }
-        .lbFrame h2 { font-size: 24px; letter-spacing: 8px; color: var(--accent); text-align: center; margin-bottom: 15px }
-        .lbTable { width: 100%; border-collapse: collapse; font-size: 14px }
-        .lbTable th { text-align: left; font-size: 11px; letter-spacing: 3px; color: #5f6f82; padding: 10px; border-bottom: 2px solid rgba(255,255,255,.1) }
-        .lbTable td { padding: 12px 10px; border-bottom: 1px solid rgba(255,255,255,.05); color: #b9c8d8; letter-spacing: 1px }
-        .lbTable tr.you td { color: var(--accent); background: rgba(255,122,26,.08) }
-        .lbTable .host-tag { font-size: 10px; color: #3fe08a; border: 1px solid rgba(63,224,138,.4); padding: 2px 6px; margin-left: 8px }
-        #waitingLobby { position: fixed; inset: 0; z-index: 75; display: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(3,5,8,.92); backdrop-filter: blur(8px) }
-        #waitingLobby.show { display: flex }
-        #lobbyRoomCodeBox { text-align: center; margin-bottom: 22px; padding: 16px 40px; background: linear-gradient(160deg, rgba(255,122,26,.1), rgba(255,122,26,.03)); border: 1px solid var(--accent-dim); box-shadow: 0 0 30px rgba(255,122,26,.15) }
-        #lobbyRoomCodeBox .lobby-room-label { font-size: 10px; letter-spacing: 5px; color: #5f6f82; margin-bottom: 6px }
-        #lobbyRoomCode { font-size: 34px; font-weight: 800; letter-spacing: 8px; color: var(--accent); text-shadow: 0 0 20px var(--accent-dim); font-variant-numeric: tabular-nums; user-select: text; cursor: text }
-        #lobbyRoomCodeBox .lobby-room-hint { font-size: 10px; letter-spacing: 3px; color: #7d8fa4; margin-top: 8px }
-        #lobbyRoomCodeBox.big #lobbyRoomCode { font-size: 44px; letter-spacing: 12px }
-        #waitingLobby h1 { font-size: 44px; letter-spacing: 8px; color: #fff; text-shadow: 0 0 20px var(--accent-dim); margin-bottom: 10px }
-        #waitingLobby p { font-size: 16px; letter-spacing: 4px; color: var(--accent); margin-bottom: 30px }
-        #lobbyPlayers { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-bottom: 40px; max-width: 80vw }
-        .lobbySlot { padding: 20px 30px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); min-width: 180px; text-align: center; border-radius: 4px }
-        .lobbySlot.ready { border-color: #3fe08a; background: rgba(63,224,138,.1) }
-        .lobbySlot .name { font-size: 16px; font-weight: 700; color: #eaf4ff; letter-spacing: 2px }
-        .lobbySlot .status { font-size: 11px; color: #7d8fa4; letter-spacing: 2px; margin-top: 6px }
-        .lobbySlot.host .name { color: var(--accent) }
-        .lobbySlot.host .status { color: var(--accent) }
-        .loadoutRow { display: grid; grid-template-columns: 110px 1fr 1fr; gap: 14px; align-items: center; padding: 14px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); margin-bottom: 10px }
-        .loadoutRow .slotLabel { font-size: 12px; letter-spacing: 3px; color: #5f6f82; text-align: center; padding: 8px; background: rgba(255,122,26,.08); border: 1px solid var(--accent-dim) }
-        .loadoutRow select { width: 100%; padding: 10px; background: #0a0f14; border: 1px solid var(--accent-dim); color: #dfe8f2; font: inherit; font-size: 12px; letter-spacing: 2px }
-        .loadoutRow select:focus { outline: none; border-color: var(--accent) }
-        .loadoutRow.empty { opacity: .55 }
+        :root {
+            --accent: #ff7a1a;
+            --accent-dim: rgba(255, 122, 26, .28);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #04060a;
+            color: #dfe8f2;
+            font-family: "Bahnschrift", "DIN Alternate", "Arial Narrow", system-ui, sans-serif
+        }
+
+        canvas#game {
+            position: fixed;
+            inset: 0;
+            display: block;
+            width: 100%;
+            height: 100%
+        }
+
+        .hidden {
+            display: none !important
+        }
+
+        .mono {
+            font-variant-numeric: tabular-nums
+        }
+
+        .accent {
+            color: var(--accent)
+        }
+
+        #flashOverlay {
+            position: fixed;
+            inset: 0;
+            background: #fff;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 999;
+            transition: opacity 0.1s;
+        }
+
+        #flashOverlay.show {
+            opacity: 1;
+            transition: opacity 0.05s;
+        }
+
+        #flashOverlay.fade {
+            opacity: 0;
+            transition: opacity 3s;
+        }
+
+        #whiteFlash {
+            position: fixed;
+            inset: 0;
+            background: #fff;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 100;
+            transition: opacity .15s
+        }
+
+        #menu {
+            position: fixed;
+            inset: 0;
+            z-index: 60;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(100deg, rgba(3, 5, 8, .94) 0%, rgba(3, 5, 8, .82) 34%, rgba(3, 5, 8, .15) 65%, rgba(3, 5, 8, .72) 100%)
+        }
+
+        #menu::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .24) 0 1px, transparent 1px 3px);
+            opacity: .22;
+            mix-blend-mode: multiply
+        }
+
+        #menu .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 34px 46px 0
+        }
+
+        .brand h1 {
+            font-size: 56px;
+            line-height: .92;
+            letter-spacing: 9px;
+            font-weight: 800;
+            color: #f4f8fc;
+            text-shadow: 0 0 26px rgba(255, 122, 26, .35), 0 3px 0 rgba(0, 0, 0, .6)
+        }
+
+        .brand h1 span {
+            color: var(--accent);
+            text-shadow: 0 0 30px var(--accent)
+        }
+
+        .brand .sub {
+            margin-top: 10px;
+            font-size: 12px;
+            letter-spacing: 6px;
+            color: #6d7f94
+        }
+
+        .brand .rule {
+            width: 300px;
+            height: 2px;
+            margin-top: 12px;
+            background: linear-gradient(90deg, var(--accent), rgba(255, 122, 26, 0))
+        }
+
+        .meta {
+            text-align: right;
+            font-size: 12px;
+            letter-spacing: 3px;
+            color: #6d7f94;
+            line-height: 2
+        }
+
+        .meta b {
+            color: var(--accent)
+        }
+
+        .mid {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            padding: 0 46px
+        }
+
+        .menu-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 2px
+        }
+
+        .menu-nav button {
+            position: relative;
+            width: 400px;
+            padding: 13px 26px;
+            border: 0;
+            text-align: left;
+            cursor: pointer;
+            background: linear-gradient(90deg, rgba(255, 122, 26, .07), rgba(255, 122, 26, 0));
+            border-left: 3px solid var(--accent-dim);
+            color: #b9c8d8;
+            font: inherit;
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            transition: .14s;
+            clip-path: polygon(0 0, 100% 0, 97.5% 100%, 0 100%)
+        }
+
+        .menu-nav button small {
+            display: block;
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: #5d6c7e;
+            font-weight: 400;
+            margin-top: 3px
+        }
+
+        .menu-nav button:hover {
+            color: #fff;
+            transform: translateX(8px);
+            background: linear-gradient(90deg, rgba(255, 122, 26, .32), rgba(255, 122, 26, .02));
+            border-left-color: var(--accent)
+        }
+
+        .menu-nav button:hover small {
+            color: var(--accent)
+        }
+
+        .footbar {
+            display: flex;
+            justify-content: space-between;
+            padding: 0 46px 26px;
+            font-size: 11px;
+            letter-spacing: 3px;
+            color: #4d5a6b
+        }
+
+        .footbar b {
+            color: #8ea2b8
+        }
+
+        .panel {
+            position: fixed;
+            inset: 0;
+            z-index: 70;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(2, 4, 7, .86);
+            backdrop-filter: blur(6px)
+        }
+
+        .panel .frame {
+            width: min(1040px, 92vw);
+            max-height: 86vh;
+            overflow: auto;
+            background: linear-gradient(160deg, rgba(14, 19, 26, .98), rgba(8, 11, 16, .98));
+            border: 1px solid var(--accent-dim);
+            box-shadow: 0 0 70px rgba(255, 122, 26, .09), inset 0 0 60px rgba(0, 0, 0, .6);
+            padding: 30px 34px 34px
+        }
+
+        .panel h2 {
+            font-size: 26px;
+            letter-spacing: 7px;
+            color: var(--accent);
+            font-weight: 800;
+            margin-bottom: 4px
+        }
+
+        .panel .hintline {
+            font-size: 11px;
+            letter-spacing: 3px;
+            color: #5f6f82;
+            margin-bottom: 22px
+        }
+
+        .row {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap
+        }
+
+        .btn {
+            padding: 12px 26px;
+            border: 1px solid var(--accent-dim);
+            background: rgba(255, 122, 26, .08);
+            color: #ffd0a6;
+            font: inherit;
+            font-size: 14px;
+            letter-spacing: 3px;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: .15s;
+            clip-path: polygon(0 0, 100% 0, 96% 100%, 0 100%)
+        }
+
+        .btn:hover {
+            background: rgba(255, 122, 26, .28);
+            color: #fff;
+            border-color: var(--accent)
+        }
+
+        .btn.ghost {
+            border-color: rgba(140, 170, 200, .3);
+            background: rgba(140, 170, 200, .05);
+            color: #9fb2c6
+        }
+
+        .btn.ghost:hover {
+            background: rgba(140, 170, 200, .18);
+            color: #fff;
+            border-color: #9fb2c6
+        }
+
+        .btn:disabled {
+            opacity: .35;
+            cursor: not-allowed
+        }
+
+        input.codeInput,
+        select.codeInput {
+            width: 100%;
+            padding: 14px 18px;
+            background: #0a0f14;
+            border: 1px solid var(--accent-dim);
+            color: #fff;
+            font: inherit;
+            font-size: 15px;
+            letter-spacing: 3px;
+            text-align: center;
+            text-transform: uppercase;
+            user-select: text;
+            cursor: pointer
+        }
+
+        input.codeInput:focus,
+        select.codeInput:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 12px rgba(255, 122, 26, .4)
+        }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: var(--accent)
+        }
+
+        input[type=color] {
+            width: 100%;
+            height: 40px;
+            border: 1px solid var(--accent);
+            background: none;
+            cursor: pointer;
+        }
+
+        .settingsGrid {
+            display: grid;
+            grid-template-columns: 200px 1fr 80px;
+            gap: 16px;
+            align-items: center;
+            font-size: 13px;
+            letter-spacing: 2px
+        }
+
+        .settingsGrid label {
+            color: #9fb2c6
+        }
+
+        .settingsGrid span {
+            color: var(--accent);
+            font-variant-numeric: tabular-nums;
+            text-align: right
+        }
+
+        #hud {
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            pointer-events: none
+        }
+
+        #hud.cinematic #healthBlock,
+        #hud.cinematic #ammoBlock,
+        #hud.cinematic #crosshair,
+        #hud.cinematic #abilityHud,
+        #hud.cinematic #hitmarker,
+        #hud.cinematic #buffBar,
+        #hud.cinematic #killfeed,
+        #hud.cinematic #medkitBlock,
+        #hud.cinematic #flashBlock {
+            display: none !important
+        }
+
+        #hud.sukuna-mode #healthBlock,
+        #hud.sukuna-mode #ammoBlock,
+        #hud.sukuna-mode #crosshair,
+        #hud.sukuna-mode #abilityHud,
+        #hud.sukuna-mode #hitmarker,
+        #hud.sukuna-mode #buffBar,
+        #hud.sukuna-mode #killfeed,
+        #hud.sukuna-mode #medkitBlock,
+        #hud.sukuna-mode #flashBlock,
+        #hud.sukuna-mode #slotList,
+        #hud.sukuna-mode #reloadBar {
+            display: none !important;
+        }
+
+        #sukunaHud {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            display: none;
+            z-index: 30;
+        }
+
+        #hud.sukuna-mode #sukunaHud {
+            display: block;
+        }
+
+        .sukuna-skill {
+            position: absolute;
+            bottom: 40px;
+            min-width: 190px;
+            padding: 10px 16px;
+            border: 1px solid #fff;
+            background: rgba(0, 0, 0, .72);
+            color: #fff;
+            font-size: 12px;
+            letter-spacing: 3px;
+            text-align: center;
+            box-shadow: 0 0 18px rgba(255, 255, 255, .12);
+        }
+
+        .sukuna-skill.active {
+            background: rgba(255, 0, 0, .28);
+            border-color: #ff3b3b;
+            color: #ffbdbd;
+        }
+
+        #sukunaDismantle {
+            left: 50%;
+            transform: translateX(-110%);
+        }
+
+        #sukunaCleave {
+            left: 50%;
+            transform: translateX(10%);
+        }
+
+        #sukunaDomain {
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 108px;
+            border-color: #ff3b3b;
+            color: #ffbdbd;
+            min-width: 240px;
+        }
+
+        #sukunaTimer {
+            position: absolute;
+            top: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            letter-spacing: 6px;
+            color: #ff3b3b;
+            text-shadow: 0 0 16px #ff3b3b;
+            font-weight: 700;
+        }
+
+        #scopeOverlay {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .1s;
+            z-index: 12
+        }
+
+        #scopeOverlay.active {
+            opacity: 1
+        }
+
+        #scopeOverlay .scope-backdrop {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, transparent 0, transparent 29.5vh, #000 30vh)
+        }
+
+        #scopeOverlay .scope-ring {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 60vh;
+            height: 60vh;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            border: 2px solid rgba(0, 0, 0, .95);
+            box-shadow: inset 0 0 140px rgba(0, 0, 0, .9), inset 0 0 30px rgba(0, 0, 0, .85)
+        }
+
+        #scopeOverlay .scope-line-h {
+            position: absolute;
+            left: -50vw;
+            right: -50vw;
+            top: 50%;
+            height: 1px;
+            background: rgba(0, 0, 0, .92)
+        }
+
+        #scopeOverlay .scope-line-v {
+            position: absolute;
+            top: -50vh;
+            bottom: -50vh;
+            left: 50%;
+            width: 1px;
+            background: rgba(0, 0, 0, .92)
+        }
+
+        #scopeOverlay .scope-info {
+            position: absolute;
+            left: 50%;
+            bottom: calc(50% - 22vh);
+            transform: translateX(-50%);
+            display: flex;
+            gap: 22px;
+            font-size: 11px;
+            letter-spacing: 3px;
+            color: #7d8fa4;
+            white-space: nowrap
+        }
+
+        #scopeOverlay .scope-info b {
+            color: var(--accent)
+        }
+
+        #crosshair {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 0;
+            height: 0;
+            --bloom: 0px
+        }
+
+        #crosshair .ch {
+            position: absolute;
+            background: #eaf4ff;
+            box-shadow: 0 0 6px rgba(0, 0, 0, .95)
+        }
+
+        #crosshair .t {
+            width: 2px;
+            height: 9px;
+            left: -1px;
+            top: calc(-11px - var(--bloom))
+        }
+
+        #crosshair .b {
+            width: 2px;
+            height: 9px;
+            left: -1px;
+            top: calc(2px + var(--bloom))
+        }
+
+        #crosshair .l {
+            height: 2px;
+            width: 9px;
+            top: -1px;
+            left: calc(-11px - var(--bloom))
+        }
+
+        #crosshair .r {
+            height: 2px;
+            width: 9px;
+            top: -1px;
+            left: calc(2px + var(--bloom))
+        }
+
+        #crosshair .dot {
+            width: 3px;
+            height: 3px;
+            left: -1.5px;
+            top: -1.5px;
+            border-radius: 50%
+        }
+
+        #hitmarker {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 0;
+            height: 0;
+            opacity: 0;
+            pointer-events: none
+        }
+
+        #hitmarker span {
+            position: absolute;
+            width: 11px;
+            height: 2px;
+            background: #fff;
+            box-shadow: 0 0 6px #000
+        }
+
+        #hitmarker span:nth-child(1) {
+            transform: rotate(45deg) translate(9px, 0)
+        }
+
+        #hitmarker span:nth-child(2) {
+            transform: rotate(-45deg) translate(9px, 0)
+        }
+
+        #hitmarker span:nth-child(3) {
+            transform: rotate(45deg) translate(-9px, 0)
+        }
+
+        #hitmarker span:nth-child(4) {
+            transform: rotate(-45deg) translate(-9px, 0)
+        }
+
+        #hitmarker.show {
+            animation: hm .22s ease-out
+        }
+
+        #hitmarker.head span {
+            background: #ff4d4d;
+            box-shadow: 0 0 10px #ff2b2b
+        }
+
+        @keyframes hm {
+            0% {
+                opacity: 1;
+                transform: scale(1.25)
+            }
+
+            100% {
+                opacity: 0;
+                transform: scale(1)
+            }
+        }
+
+        #vignette {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            transition: opacity .28s;
+            background: radial-gradient(ellipse at center, transparent 42%, rgba(190, 20, 20, .72) 100%)
+        }
+
+        #healthBlock {
+            position: absolute;
+            left: 38px;
+            bottom: 34px;
+            width: 250px
+        }
+
+        #healthBlock .label {
+            font-size: 10px;
+            letter-spacing: 4px;
+            color: #7d8fa4;
+            margin-bottom: 6px
+        }
+
+        #healthBlock .bar {
+            height: 9px;
+            background: rgba(255, 255, 255, .09);
+            border: 1px solid rgba(255, 255, 255, .13);
+            overflow: hidden;
+            clip-path: polygon(0 0, 100% 0, 98% 100%, 0 100%)
+        }
+
+        #healthFill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #3fe08a, #8effc4);
+            transition: width .12s, background .2s
+        }
+
+        #healthNum {
+            position: absolute;
+            right: 0;
+            top: -3px;
+            font-size: 26px;
+            font-weight: 800;
+            color: #eaf4ff;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, .8)
+        }
+
+        #medkitBlock {
+            position: absolute;
+            left: 38px;
+            bottom: 108px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 7px 14px 7px 10px;
+            background: linear-gradient(135deg, rgba(20, 60, 40, .55), rgba(10, 30, 20, .55));
+            border: 1px solid rgba(63, 224, 138, .5);
+            box-shadow: 0 0 20px rgba(63, 224, 138, .15);
+            transition: opacity .2s, border-color .2s
+        }
+
+        #medkitBlock.empty {
+            opacity: .45;
+            border-color: rgba(120, 140, 155, .3);
+            box-shadow: none
+        }
+
+        #medkitBlock .medkit-icon {
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 900;
+            color: #3fe08a;
+            background: rgba(63, 224, 138, .12);
+            border: 1px solid rgba(63, 224, 138, .4);
+            line-height: 1
+        }
+
+        #medkitBlock.empty .medkit-icon {
+            color: #63758a;
+            background: rgba(120, 140, 155, .08);
+            border-color: rgba(120, 140, 155, .3)
+        }
+
+        #medkitBlock .medkit-info {
+            display: flex;
+            flex-direction: column;
+            gap: 1px
+        }
+
+        #medkitBlock .medkit-label {
+            font-size: 9px;
+            letter-spacing: 3px;
+            color: #7d8fa4
+        }
+
+        #medkitBlock .medkit-count {
+            font-size: 13px;
+            letter-spacing: 2px;
+            font-weight: 700;
+            color: #3fe08a
+        }
+
+        #medkitBlock.empty .medkit-count {
+            color: #63758a
+        }
+
+        #flashBlock {
+            position: absolute;
+            left: 38px;
+            bottom: 155px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 7px 14px 7px 10px;
+            background: linear-gradient(135deg, rgba(60, 60, 60, .55), rgba(30, 30, 30, .55));
+            border: 1px solid rgba(200, 200, 200, .5);
+            box-shadow: 0 0 20px rgba(200, 200, 200, .15);
+            transition: opacity .2s, border-color .2s
+        }
+
+        #flashBlock.empty {
+            opacity: .45;
+            border-color: rgba(120, 140, 155, .3);
+            box-shadow: none
+        }
+
+        #flashBlock .medkit-icon {
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 900;
+            color: #fff;
+            background: rgba(200, 200, 200, .12);
+            border: 1px solid rgba(200, 200, 200, .4);
+            line-height: 1
+        }
+
+        #flashBlock.empty .medkit-icon {
+            color: #63758a;
+            background: rgba(120, 140, 155, .08);
+            border-color: rgba(120, 140, 155, .3)
+        }
+
+        #flashBlock .medkit-info {
+            display: flex;
+            flex-direction: column;
+            gap: 1px
+        }
+
+        #flashBlock .medkit-label {
+            font-size: 9px;
+            letter-spacing: 3px;
+            color: #7d8fa4
+        }
+
+        #flashBlock .medkit-count {
+            font-size: 13px;
+            letter-spacing: 2px;
+            font-weight: 700;
+            color: #fff
+        }
+
+        #flashBlock.empty .medkit-count {
+            color: #63758a
+        }
+
+        #ammoBlock {
+            position: absolute;
+            right: 38px;
+            bottom: 34px;
+            text-align: right;
+            min-width: 250px
+        }
+
+        #weaponName {
+            font-size: 12px;
+            letter-spacing: 4px;
+            color: #8ea2b8;
+            margin-bottom: 2px
+        }
+
+        .ammoRow {
+            display: flex;
+            align-items: baseline;
+            justify-content: flex-end;
+            gap: 6px
+        }
+
+        #ammoMag {
+            font-size: 46px;
+            font-weight: 800;
+            line-height: 1;
+            color: #fff;
+            text-shadow: 0 3px 12px rgba(0, 0, 0, .8)
+        }
+
+        #ammoMag.low {
+            color: #ff5a3c
+        }
+
+        #ammoRes {
+            font-size: 16px;
+            color: #7488a0;
+            letter-spacing: 2px
+        }
+
+        #reloadBar {
+            height: 4px;
+            background: rgba(255, 255, 255, .1);
+            margin-top: 8px;
+            opacity: 0;
+            transition: opacity .1s
+        }
+
+        #reloadBar.on {
+            opacity: 1
+        }
+
+        #reloadFill {
+            height: 100%;
+            width: 0%;
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent)
+        }
+
+        #slotList {
+            display: flex;
+            gap: 6px;
+            justify-content: flex-end;
+            margin-top: 10px;
+            flex-wrap: wrap
+        }
+
+        .slot {
+            font-size: 9px;
+            letter-spacing: 1px;
+            padding: 4px 7px;
+            border: 1px solid rgba(255, 255, 255, .13);
+            color: #63758a;
+            background: rgba(255, 255, 255, .03)
+        }
+
+        .slot.active {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(255, 122, 26, .16)
+        }
+
+        #topInfo {
+            position: absolute;
+            left: 38px;
+            top: 30px;
+            line-height: 1.5
+        }
+
+        #modeLabel {
+            font-size: 11px;
+            letter-spacing: 5px;
+            color: var(--accent)
+        }
+
+        #waveLabel {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: 3px;
+            color: #eaf4ff
+        }
+
+        #enemyLabel {
+            font-size: 12px;
+            letter-spacing: 3px;
+            color: #7d8fa4
+        }
+
+        #killfeed {
+            position: absolute;
+            right: 34px;
+            top: 30px;
+            width: 330px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 5px
+        }
+
+        .kf {
+            font-size: 12px;
+            letter-spacing: 2px;
+            padding: 6px 11px;
+            background: linear-gradient(90deg, rgba(255, 122, 26, 0), rgba(255, 122, 26, .16));
+            border-right: 2px solid var(--accent);
+            color: #ffd7b3;
+            animation: kfin .2s ease-out
+        }
+
+        .kf.head {
+            border-right-color: #ff3b3b;
+            color: #ffbdbd;
+            background: linear-gradient(90deg, rgba(255, 59, 59, 0), rgba(255, 59, 59, .2))
+        }
+
+        @keyframes kfin {
+            from {
+                opacity: 0;
+                transform: translateX(26px)
+            }
+
+            to {
+                opacity: 1;
+                transform: none
+            }
+        }
+
+        #killSkull {
+            position: absolute;
+            left: 50%;
+            top: 38%;
+            transform: translate(-50%, -50%) scale(.4);
+            font-size: 90px;
+            color: #ff2b2b;
+            opacity: 0;
+            filter: drop-shadow(0 0 26px rgba(255, 43, 43, .95))
+        }
+
+        #killSkull.pop {
+            animation: skull .85s cubic-bezier(.2, .9, .25, 1) forwards
+        }
+
+        @keyframes skull {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(.3) rotate(-14deg)
+            }
+
+            18% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.18) rotate(4deg)
+            }
+
+            55% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1)
+            }
+
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -58%) scale(1.6)
+            }
+        }
+
+        #buffBar {
+            position: absolute;
+            left: 50%;
+            bottom: 100px;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center
+        }
+
+        .buff {
+            font-size: 10px;
+            letter-spacing: 2px;
+            padding: 5px 12px;
+            color: #0a0f14;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--accent), #ffb877);
+            box-shadow: 0 0 20px var(--accent-dim)
+        }
+
+        #damageNums {
+            position: absolute;
+            inset: 0;
+            overflow: hidden
+        }
+
+        .dnum {
+            position: absolute;
+            font-size: 16px;
+            font-weight: 800;
+            color: #fff;
+            text-shadow: 0 2px 8px #000;
+            animation: dnum .7s ease-out forwards
+        }
+
+        .dnum.head {
+            color: #ff5252;
+            font-size: 21px
+        }
+
+        @keyframes dnum {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(.6)
+            }
+
+            30% {
+                transform: translate(-50%, -90%) scale(1.15)
+            }
+
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -150%) scale(.95)
+            }
+        }
+
+        #centerMsg {
+            position: fixed;
+            left: 50%;
+            top: 26%;
+            transform: translate(-50%, -50%);
+            z-index: 40;
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity .3s
+        }
+
+        #centerMsg.show {
+            opacity: 1
+        }
+
+        #centerMsg .big {
+            font-size: 44px;
+            font-weight: 800;
+            letter-spacing: 8px;
+            color: #fff;
+            text-shadow: 0 0 34px var(--accent)
+        }
+
+        #centerMsg .small {
+            font-size: 13px;
+            letter-spacing: 5px;
+            color: var(--accent);
+            margin-top: 6px
+        }
+
+        #countdown {
+            position: fixed;
+            left: 50%;
+            top: 40%;
+            transform: translate(-50%, -50%);
+            z-index: 45;
+            font-size: 120px;
+            font-weight: 900;
+            color: var(--accent);
+            text-shadow: 0 0 40px var(--accent), 0 4px 0 #000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity .2s
+        }
+
+        #countdown.show {
+            opacity: 1;
+            animation: cdPulse .9s ease-out
+        }
+
+        @keyframes cdPulse {
+            0% {
+                transform: translate(-50%, -50%) scale(1.6);
+                opacity: 0
+            }
+
+            20% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1
+            }
+
+            80% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(.85);
+                opacity: 0
+            }
+        }
+
+        #abilityHud {
+            position: absolute;
+            left: 38px;
+            bottom: 200px;
+            display: flex;
+            gap: 10px;
+            align-items: center
+        }
+
+        #abilitySlot {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 14px;
+            background: linear-gradient(135deg, rgba(160, 60, 220, .3), rgba(80, 20, 120, .4));
+            border: 1px solid rgba(180, 100, 255, .6);
+            box-shadow: 0 0 20px rgba(180, 100, 255, .3)
+        }
+
+        #abilityKey {
+            font-size: 11px;
+            color: #c9a6ff;
+            border: 1px solid rgba(180, 100, 255, .6);
+            padding: 3px 7px;
+            letter-spacing: 1px
+        }
+
+        #abilityIcon {
+            font-size: 16px;
+            color: #e8d5ff;
+            font-weight: 700;
+            letter-spacing: 2px
+        }
+
+        #abilityCharges {
+            font-size: 11px;
+            color: #b890ff;
+            letter-spacing: 1px
+        }
+
+        #abilityCdBar {
+            width: 100px;
+            height: 4px;
+            background: rgba(255, 255, 255, .1)
+        }
+
+        #abilityCdFill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #a03cff, #e8a0ff);
+            transition: width .1s
+        }
+
+        #clickHint {
+            position: fixed;
+            inset: 0;
+            z-index: 25;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none
+        }
+
+        #clickHint.show {
+            display: flex
+        }
+
+        #clickHint span {
+            font-size: 14px;
+            letter-spacing: 4px;
+            color: var(--accent);
+            padding: 12px 24px;
+            background: rgba(3, 5, 8, .8);
+            border: 1px solid var(--accent-dim);
+            animation: pulse 1.5s infinite
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: .7
+            }
+
+            50% {
+                opacity: 1
+            }
+        }
+
+        .shopGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+            gap: 14px
+        }
+
+        .shopCard {
+            background: linear-gradient(160deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .015));
+            border: 1px solid rgba(255, 255, 255, .09);
+            padding: 16px;
+            transition: .15s
+        }
+
+        .shopCard:hover {
+            border-color: var(--accent-dim);
+            background: rgba(255, 122, 26, .07)
+        }
+
+        .shopCard h3 {
+            font-size: 14px;
+            letter-spacing: 2px;
+            color: #eaf4ff;
+            margin-bottom: 6px
+        }
+
+        .shopCard p {
+            font-size: 11px;
+            color: #7d8fa4;
+            line-height: 1.5;
+            min-height: 32px
+        }
+
+        .shopCard .price {
+            margin-top: 10px;
+            font-size: 13px;
+            color: var(--accent);
+            letter-spacing: 2px
+        }
+
+        .shopCard .btn {
+            width: 100%;
+            margin-top: 10px;
+            text-align: center;
+            padding: 9px
+        }
+
+        .shopCard.owned {
+            border-color: rgba(63, 224, 138, .45)
+        }
+
+        .shopCard.owned .price {
+            color: #3fe08a
+        }
+
+        .shopCard.equipped {
+            border-color: var(--accent);
+            background: rgba(255, 122, 26, .12)
+        }
+
+        .srvTable {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px
+        }
+
+        .srvTable th {
+            text-align: left;
+            font-size: 10px;
+            letter-spacing: 3px;
+            color: #5f6f82;
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, .1);
+            font-weight: 400
+        }
+
+        .srvTable td {
+            padding: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, .05);
+            color: #b9c8d8
+        }
+
+        .srvTable tr {
+            cursor: pointer
+        }
+
+        .srvTable tbody tr:hover {
+            background: rgba(255, 122, 26, .12)
+        }
+
+        .srvTable .ping {
+            color: #3fe08a
+        }
+
+        .srvTable .you {
+            color: var(--accent);
+            font-weight: 600
+        }
+
+        .srvTable .offline {
+            color: #5a6a7a;
+            font-style: italic
+        }
+
+        #serverCodeBox {
+            font-size: 22px;
+            letter-spacing: 6px;
+            color: var(--accent);
+            padding: 12px;
+            background: rgba(255, 122, 26, .08);
+            border: 1px solid var(--accent-dim);
+            text-align: center;
+            user-select: text;
+            pointer-events: auto;
+            cursor: text;
+            font-variant-numeric: tabular-nums;
+            margin: 12px 0
+        }
+
+        .mapGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 14px
+        }
+
+        .mapCard {
+            background: linear-gradient(160deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .015));
+            border: 1px solid rgba(255, 255, 255, .09);
+            padding: 16px;
+            cursor: pointer;
+            transition: .15s
+        }
+
+        .mapCard:hover {
+            border-color: var(--accent-dim)
+        }
+
+        .mapCard.selected {
+            border-color: var(--accent);
+            background: rgba(255, 122, 26, .12);
+            box-shadow: 0 0 20px rgba(255, 122, 26, .2)
+        }
+
+        .mapCard h3 {
+            font-size: 14px;
+            letter-spacing: 2px;
+            color: #eaf4ff;
+            margin-bottom: 6px
+        }
+
+        .mapCard p {
+            font-size: 11px;
+            color: #7d8fa4;
+            line-height: 1.5
+        }
+
+        .mpHint {
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: #7d8fa4;
+            line-height: 1.7;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: rgba(255, 122, 26, .06);
+            border-left: 2px solid var(--accent)
+        }
+
+        .mpHint b {
+            color: var(--accent)
+        }
+
+        #leaderboardOverlay {
+            position: fixed;
+            inset: 0;
+            z-index: 80;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(2, 4, 7, .85);
+            backdrop-filter: blur(4px);
+            pointer-events: none
+        }
+
+        #leaderboardOverlay.show {
+            display: flex
+        }
+
+        .lbFrame {
+            width: min(900px, 90vw);
+            background: linear-gradient(160deg, rgba(14, 19, 26, .98), rgba(8, 11, 16, .98));
+            border: 1px solid var(--accent-dim);
+            box-shadow: 0 0 50px rgba(255, 122, 26, .15);
+            padding: 20px 30px
+        }
+
+        .lbFrame h2 {
+            font-size: 24px;
+            letter-spacing: 8px;
+            color: var(--accent);
+            text-align: center;
+            margin-bottom: 15px
+        }
+
+        .lbTable {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px
+        }
+
+        .lbTable th {
+            text-align: left;
+            font-size: 11px;
+            letter-spacing: 3px;
+            color: #5f6f82;
+            padding: 10px;
+            border-bottom: 2px solid rgba(255, 255, 255, .1)
+        }
+
+        .lbTable td {
+            padding: 12px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, .05);
+            color: #b9c8d8;
+            letter-spacing: 1px
+        }
+
+        .lbTable tr.you td {
+            color: var(--accent);
+            background: rgba(255, 122, 26, .08)
+        }
+
+        .lbTable .host-tag {
+            font-size: 10px;
+            color: #3fe08a;
+            border: 1px solid rgba(63, 224, 138, .4);
+            padding: 2px 6px;
+            margin-left: 8px
+        }
+
+        #waitingLobby {
+            position: fixed;
+            inset: 0;
+            z-index: 75;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(3, 5, 8, .92);
+            backdrop-filter: blur(8px)
+        }
+
+        #waitingLobby.show {
+            display: flex
+        }
+
+        #lobbyRoomCodeBox {
+            text-align: center;
+            margin-bottom: 22px;
+            padding: 16px 40px;
+            background: linear-gradient(160deg, rgba(255, 122, 26, .1), rgba(255, 122, 26, .03));
+            border: 1px solid var(--accent-dim);
+            box-shadow: 0 0 30px rgba(255, 122, 26, .15)
+        }
+
+        #lobbyRoomCodeBox .lobby-room-label {
+            font-size: 10px;
+            letter-spacing: 5px;
+            color: #5f6f82;
+            margin-bottom: 6px
+        }
+
+        #lobbyRoomCode {
+            font-size: 34px;
+            font-weight: 800;
+            letter-spacing: 8px;
+            color: var(--accent);
+            text-shadow: 0 0 20px var(--accent-dim);
+            font-variant-numeric: tabular-nums;
+            user-select: text;
+            cursor: text
+        }
+
+        #lobbyRoomCodeBox .lobby-room-hint {
+            font-size: 10px;
+            letter-spacing: 3px;
+            color: #7d8fa4;
+            margin-top: 8px
+        }
+
+        #lobbyRoomCodeBox.big #lobbyRoomCode {
+            font-size: 44px;
+            letter-spacing: 12px
+        }
+
+        #waitingLobby h1 {
+            font-size: 44px;
+            letter-spacing: 8px;
+            color: #fff;
+            text-shadow: 0 0 20px var(--accent-dim);
+            margin-bottom: 10px
+        }
+
+        #waitingLobby p {
+            font-size: 16px;
+            letter-spacing: 4px;
+            color: var(--accent);
+            margin-bottom: 30px
+        }
+
+        #lobbyPlayers {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 40px;
+            max-width: 80vw
+        }
+
+        .lobbySlot {
+            padding: 20px 30px;
+            background: rgba(255, 255, 255, .05);
+            border: 1px solid rgba(255, 255, 255, .1);
+            min-width: 180px;
+            text-align: center;
+            border-radius: 4px
+        }
+
+        .lobbySlot.ready {
+            border-color: #3fe08a;
+            background: rgba(63, 224, 138, .1)
+        }
+
+        .lobbySlot .name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #eaf4ff;
+            letter-spacing: 2px
+        }
+
+        .lobbySlot .status {
+            font-size: 11px;
+            color: #7d8fa4;
+            letter-spacing: 2px;
+            margin-top: 6px
+        }
+
+        .lobbySlot.host .name {
+            color: var(--accent)
+        }
+
+        .lobbySlot.host .status {
+            color: var(--accent)
+        }
+
+        .loadoutRow {
+            display: grid;
+            grid-template-columns: 110px 1fr 1fr;
+            gap: 14px;
+            align-items: center;
+            padding: 14px;
+            background: rgba(255, 255, 255, .03);
+            border: 1px solid rgba(255, 255, 255, .08);
+            margin-bottom: 10px
+        }
+
+        .loadoutRow .slotLabel {
+            font-size: 12px;
+            letter-spacing: 3px;
+            color: #5f6f82;
+            text-align: center;
+            padding: 8px;
+            background: rgba(255, 122, 26, .08);
+            border: 1px solid var(--accent-dim)
+        }
+
+        .loadoutRow select {
+            width: 100%;
+            padding: 10px;
+            background: #0a0f14;
+            border: 1px solid var(--accent-dim);
+            color: #dfe8f2;
+            font: inherit;
+            font-size: 12px;
+            letter-spacing: 2px
+        }
+
+        .loadoutRow select:focus {
+            outline: none;
+            border-color: var(--accent)
+        }
+
+        .loadoutRow.empty {
+            opacity: .55
+        }
+
+        /* === NEW: health bars, shop redesign, skins, clash === */
+        .enemyHpWrap {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .hudHpRing {
+            position: absolute;
+            left: 38px;
+            bottom: 60px;
+            width: 250px;
+            height: 3px;
+        }
+
+        .hudHpRing .seg {
+            position: absolute;
+            top: 0;
+            height: 3px;
+            background: #3fe08a;
+            box-shadow: 0 0 8px #3fe08a;
+            transition: width .15s, background .2s;
+        }
+
+        .shopTabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 18px;
+        }
+
+        .shopTabs button {
+            padding: 8px 18px;
+            font: inherit;
+            font-size: 11px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #9fb2c6;
+            background: rgba(255, 255, 255, .03);
+            border: 1px solid rgba(255, 255, 255, .1);
+            cursor: pointer;
+        }
+
+        .shopTabs button.active {
+            color: #0a0f14;
+            background: var(--accent);
+            border-color: var(--accent);
+            font-weight: 700;
+        }
+
+        .shopGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 16px;
+        }
+
+        .shopCard {
+            position: relative;
+            background: linear-gradient(160deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .015));
+            border: 1px solid rgba(255, 255, 255, .09);
+            padding: 16px 16px 14px;
+            transition: .15s;
+            overflow: hidden;
+        }
+
+        .shopCard::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--accent);
+            opacity: .5;
+        }
+
+        .shopCard:hover {
+            border-color: var(--accent-dim);
+            background: rgba(255, 122, 26, .07);
+            transform: translateY(-2px);
+        }
+
+        .shopCard h3 {
+            font-size: 14px;
+            letter-spacing: 2px;
+            color: #eaf4ff;
+            margin-bottom: 6px;
+        }
+
+        .shopCard p {
+            font-size: 11px;
+            color: #7d8fa4;
+            line-height: 1.5;
+            min-height: 34px;
+        }
+
+        .shopCard .price {
+            margin-top: 10px;
+            font-size: 13px;
+            color: var(--accent);
+            letter-spacing: 2px;
+            font-weight: 700;
+        }
+
+        .shopCard .challenge {
+            margin-top: 6px;
+            font-size: 10px;
+            letter-spacing: 1px;
+            color: #6d7f94;
+        }
+
+        .shopCard .challenge b {
+            color: #3fe08a;
+        }
+
+        .shopCard.owned {
+            border-color: rgba(63, 224, 138, .45);
+        }
+
+        .shopCard.owned::before {
+            background: #3fe08a;
+        }
+
+        .shopCard.owned .price {
+            color: #3fe08a;
+        }
+
+        .shopCard .btn {
+            width: 100%;
+            margin-top: 12px;
+            text-align: center;
+            padding: 9px;
+        }
+
+        .shopCard .bar {
+            height: 4px;
+            background: rgba(255, 255, 255, .08);
+            margin-top: 8px;
+        }
+
+        .shopCard .bar i {
+            display: block;
+            height: 100%;
+            background: var(--accent);
+        }
+
+        .skinGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 12px;
+            margin: 6px 0 20px;
+        }
+
+        .skinCard {
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, .1);
+            background: rgba(255, 255, 255, .03);
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .skinCard.sel {
+            border-color: var(--accent);
+            background: rgba(255, 122, 26, .12);
+        }
+
+        .skinCard .swatch {
+            width: 100%;
+            height: 36px;
+            margin-bottom: 8px;
+            border: 1px solid rgba(255, 255, 255, .15);
+        }
+
+        .skinCard .nm {
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: #c0cedd;
+        }
+
+        #clashOverlay {
+            position: fixed;
+            inset: 0;
+            z-index: 95;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            background: radial-gradient(ellipse at center, rgba(60, 0, 0, .85), rgba(2, 0, 0, .96));
+            backdrop-filter: blur(3px);
+        }
+
+        #clashOverlay.show {
+            display: flex;
+        }
+
+        #clashOverlay .cl-title {
+            font-size: 44px;
+            letter-spacing: 12px;
+            font-weight: 900;
+            color: #ff2b2b;
+            text-shadow: 0 0 40px #ff0000, 0 4px 0 #000;
+            animation: clPulse 1s infinite alternate;
+        }
+
+        @keyframes clPulse {
+            from {
+                transform: scale(1)
+            }
+
+            to {
+                transform: scale(1.05)
+            }
+        }
+
+        #clashOverlay .cl-sub {
+            margin-top: 8px;
+            font-size: 13px;
+            letter-spacing: 6px;
+            color: #ffbdbd;
+        }
+
+        #clashOverlay .cl-bars {
+            display: flex;
+            gap: 60px;
+            margin-top: 36px;
+            align-items: flex-end;
+        }
+
+        #clashOverlay .cl-side {
+            width: 220px;
+            text-align: center;
+        }
+
+        #clashOverlay .cl-name {
+            font-size: 12px;
+            letter-spacing: 3px;
+            color: #e8e8e8;
+            margin-bottom: 10px;
+        }
+
+        #clashOverlay .cl-meter {
+            height: 28px;
+            border: 1px solid #ff3b3b;
+            background: rgba(255, 0, 0, .08);
+            overflow: hidden;
+        }
+
+        #clashOverlay .cl-meter i {
+            display: block;
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #ff2b2b, #ff8a8a);
+            transition: width .08s;
+        }
+
+        #clashOverlay .cl-key {
+            margin-top: 34px;
+            font-size: 56px;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 0 0 26px #ff2b2b;
+            animation: clKey .3s infinite alternate;
+        }
+
+        @keyframes clKey {
+            from {
+                opacity: .6;
+                transform: scale(.95)
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1.08)
+            }
+        }
+
+        #clashOverlay .cl-timer {
+            margin-top: 14px;
+            font-size: 16px;
+            letter-spacing: 4px;
+            color: #ff8a8a;
+        }
     </style>
 </head>
+
 <body>
     <canvas id="game"></canvas>
     <div id="flashOverlay"></div>
@@ -229,8 +1883,11 @@
         <p id="lobbyStatus">1 / 4 READY</p>
         <div id="lobbyPlayers"></div>
         <div class="row">
-            <button class="btn" id="btnStartMatch" style="display:none" onclick="game.network.startMatch()">START MATCH</button>
-            <button class="btn ghost" onclick="game.network.disconnect(); document.getElementById('waitingLobby').classList.remove('show'); game._quitToMenu();">LEAVE LOBBY</button>
+            <button class="btn" id="btnStartMatch" style="display:none" onclick="game.network.startMatch()">START
+                MATCH</button>
+            <button class="btn ghost"
+                onclick="game.network.disconnect(); document.getElementById('waitingLobby').classList.remove('show'); game._quitToMenu();">LEAVE
+                LOBBY</button>
         </div>
     </div>
 
@@ -238,7 +1895,16 @@
         <div class="lbFrame">
             <h2>SCOREBOARD</h2>
             <table class="lbTable">
-                <thead><tr><th>RANK</th><th>OPERATOR NAME</th><th>KILLS</th><th>DEATHS</th><th>K/D RATIO</th><th>STATUS</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>RANK</th>
+                        <th>OPERATOR NAME</th>
+                        <th>KILLS</th>
+                        <th>DEATHS</th>
+                        <th>K/D RATIO</th>
+                        <th>STATUS</th>
+                    </tr>
+                </thead>
                 <tbody id="lbBody"></tbody>
             </table>
         </div>
@@ -264,7 +1930,8 @@
                 <span>RANGE 400m</span>
             </div>
         </div>
-        <div id="crosshair"><span class="ch t"></span><span class="ch b"></span><span class="ch l"></span><span class="ch r"></span><span class="ch dot"></span></div>
+        <div id="crosshair"><span class="ch t"></span><span class="ch b"></span><span class="ch l"></span><span
+                class="ch r"></span><span class="ch dot"></span></div>
         <div id="hitmarker"><span></span><span></span><span></span><span></span></div>
         <div id="vignette"></div>
         <div id="topInfo">
@@ -277,7 +1944,12 @@
         <div id="buffBar"></div>
         <div id="healthBlock">
             <div class="label">VITALS</div>
-            <div class="bar"><div id="healthFill"></div></div>
+            <div id="healthChip"
+                style="position:absolute;right:0;top:-26px;font-size:11px;letter-spacing:2px;color:#8effc4;font-weight:700">
+                100 HP</div>
+            <div class="bar">
+                <div id="healthFill"></div>
+            </div>
             <div id="healthNum" class="mono">100</div>
         </div>
         <div id="medkitBlock" class="empty">
@@ -296,8 +1968,11 @@
         </div>
         <div id="ammoBlock">
             <div id="weaponName">MK-7 CARBINE</div>
-            <div class="ammoRow"><span id="ammoMag" class="mono">30</span><span id="ammoRes" class="mono">/ 240</span></div>
-            <div id="reloadBar"><div id="reloadFill"></div></div>
+            <div class="ammoRow"><span id="ammoMag" class="mono">30</span><span id="ammoRes" class="mono">/ 240</span>
+            </div>
+            <div id="reloadBar">
+                <div id="reloadFill"></div>
+            </div>
             <div id="slotList"></div>
         </div>
         <div id="abilityHud">
@@ -306,11 +1981,16 @@
                 <div id="abilityIcon">—</div>
                 <div id="abilityCharges">0</div>
             </div>
-            <div id="abilityCdBar"><div id="abilityCdFill"></div></div>
+            <div id="abilityCdBar">
+                <div id="abilityCdFill"></div>
+            </div>
         </div>
     </div>
 
-    <div id="centerMsg"><div class="big"></div><div class="small"></div></div>
+    <div id="centerMsg">
+        <div class="big"></div>
+        <div class="small"></div>
+    </div>
     <div id="countdown">3</div>
     <div id="clickHint"><span>CLICK TO RESUME AIM</span></div>
 
@@ -321,13 +2001,16 @@
                 <div class="rule"></div>
                 <div class="sub">CLASSIFIED COMBAT SIMULATION // BUILD 2.4.0</div>
             </div>
-            <div class="meta">OPERATOR <b id="menuName">RECRUIT</b><br>POINTS <b id="menuPoints">0</b><br>MAP <b id="menuMap">BLACKSITE</b><br><span>SYSTEM READY</span></div>
+            <div class="meta">OPERATOR <b id="menuName">RECRUIT</b><br>POINTS <b id="menuPoints">0</b><br>MAP <b
+                    id="menuMap">BLACKSITE</b><br><span>SYSTEM READY</span></div>
         </div>
         <div class="mid">
             <nav class="menu-nav">
                 <button data-action="wave">Solo Wave<small>Endless survival · scaling hostiles</small></button>
-                <button data-action="training">Training Grounds<small>Sandbox · infinite ammo · ability test</small></button>
-                <button data-action="multiplayer">Multiplayer<small>PeerJS WebRTC · Private + Public servers</small></button>
+                <button data-action="training">Training Grounds<small>Sandbox · infinite ammo · ability
+                        test</small></button>
+                <button data-action="multiplayer">Multiplayer<small>PeerJS WebRTC · Private + Public
+                        servers</small></button>
                 <button data-action="loadout">Loadout<small>Weapons · camos · kit</small></button>
                 <button data-action="shop">Armory / Shop<small>Weapons · camos · attachments</small></button>
                 <button data-action="maps">Maps<small>Select battlefield</small></button>
@@ -335,8 +2018,10 @@
             </nav>
         </div>
         <div class="footbar">
-            <div>WASD MOVE · <b>SHIFT</b> SPRINT · <b>SPACE</b> TAP-JUMP · <b>C</b> SLIDE · <b>MOUSE</b> AIM/FIRE · <b>F</b> MEDKIT · <b>G</b> FLASHBANG</div>
-            <div><b>1-5</b> WEAPONS · <b>R</b> RELOAD · <b>E</b> ABILITY · <b>ESC</b> PAUSE · <b>TAB</b> SCOREBOARD · <b>V</b> SUKUNA</div>
+            <div>WASD MOVE · <b>SHIFT</b> SPRINT · <b>SPACE</b> TAP-JUMP · <b>C</b> SLIDE · <b>MOUSE</b> AIM/FIRE ·
+                <b>F</b> MEDKIT · <b>G</b> FLASHBANG</div>
+            <div><b>1-5</b> WEAPONS · <b>R</b> RELOAD · <b>E</b> ABILITY · <b>ESC</b> PAUSE · <b>TAB</b> SCOREBOARD ·
+                <b>V</b> SUKUNA</div>
         </div>
     </div>
 
@@ -347,7 +2032,8 @@
             <div id="pauseServerBox" class="hidden">
                 <div style="font-size:11px;letter-spacing:3px;color:#5f6f82;margin-bottom:6px">ROOM CODE</div>
                 <div id="serverCodeBox">——</div>
-                <div style="font-size:10px;letter-spacing:2px;color:#5f6f82;margin-bottom:14px">Click to select · Ctrl+C to copy</div>
+                <div style="font-size:10px;letter-spacing:2px;color:#5f6f82;margin-bottom:14px">Click to select · Ctrl+C
+                    to copy</div>
             </div>
             <div class="row" style="flex-direction:column;gap:10px">
                 <button class="btn" data-action="resume">Resume</button>
@@ -361,8 +2047,10 @@
         <div class="frame" style="width:min(620px,92vw)">
             <h2 id="overTitle">ELIMINATED</h2>
             <div class="hintline" id="overSub">MISSION FAILED</div>
-            <div id="overStats" style="font-size:14px;letter-spacing:2px;line-height:2;color:#9fb2c6;margin-bottom:22px"></div>
-            <div class="row"><button class="btn" data-action="restart">Retry</button><button class="btn ghost" data-action="quit">Main Menu</button></div>
+            <div id="overStats"
+                style="font-size:14px;letter-spacing:2px;line-height:2;color:#9fb2c6;margin-bottom:22px"></div>
+            <div class="row"><button class="btn" data-action="restart">Retry</button><button class="btn ghost"
+                    data-action="quit">Main Menu</button></div>
         </div>
     </div>
 
@@ -371,7 +2059,8 @@
             <h2>LOADOUT</h2>
             <div class="hintline">ASSIGN WEAPONS TO SLOTS AND CHOOSE CAMOS</div>
             <div id="loadoutGrid"></div>
-            <div class="row" style="margin-top:26px"><button class="btn ghost" data-action="close-panel">Back</button></div>
+            <div class="row" style="margin-top:26px"><button class="btn ghost" data-action="close-panel">Back</button>
+            </div>
         </div>
     </div>
 
@@ -379,9 +2068,11 @@
         <div class="frame">
             <h2>ARMORY</h2>
             <div class="hintline">SPEND COMBAT POINTS ON WEAPONS · CAMOS · TRACERS</div>
-            <div style="margin-bottom:18px;font-size:14px;letter-spacing:3px">BALANCE: <b class="accent mono" id="shopBalance">0</b> PTS</div>
+            <div style="margin-bottom:18px;font-size:14px;letter-spacing:3px">BALANCE: <b class="accent mono"
+                    id="shopBalance">0</b> PTS</div>
             <div class="shopGrid" id="shopGrid"></div>
-            <div class="row" style="margin-top:26px"><button class="btn ghost" data-action="close-panel">Back</button></div>
+            <div class="row" style="margin-top:26px"><button class="btn ghost" data-action="close-panel">Back</button>
+            </div>
         </div>
     </div>
 
@@ -390,7 +2081,8 @@
             <h2>MULTIPLAYER (P2P)</h2>
             <div class="hintline">SERVERLESS WEBRTC · WORKS ON GITHUB PAGES</div>
             <div class="mpHint">
-                <b>HOW IT WORKS:</b> Uses PeerJS (WebRTC) for direct cross-device multiplayer. No backend server required. The Host acts as the central relay.<br><br>
+                <b>HOW IT WORKS:</b> Uses PeerJS (WebRTC) for direct cross-device multiplayer. No backend server
+                required. The Host acts as the central relay.<br><br>
                 <b>PRIVATE:</b> Host a private server, share the room code with friends.<br>
                 <b>PUBLIC:</b> Claim a public slot — anyone can browse &amp; join without a code.
             </div>
@@ -401,13 +2093,27 @@
             </div>
             <div class="row" style="margin-bottom:12px">
                 <button class="btn ghost" data-action="refresh-public">↻ Refresh Public Servers</button>
-                <span id="publicStatus" style="font-size:11px;letter-spacing:2px;color:#5f6f82;align-self:center">Click refresh to scan</span>
+                <span id="publicStatus" style="font-size:11px;letter-spacing:2px;color:#5f6f82;align-self:center">Click
+                    refresh to scan</span>
             </div>
             <table class="srvTable">
-                <thead><tr><th>SERVER</th><th>MODE</th><th>MAP</th><th>PLAYERS</th><th>PING</th></tr></thead>
-                <tbody id="srvBody"><tr><td colspan="5" class="offline">No public servers detected. Host one or click Refresh.</td></tr></tbody>
+                <thead>
+                    <tr>
+                        <th>SERVER</th>
+                        <th>MODE</th>
+                        <th>MAP</th>
+                        <th>PLAYERS</th>
+                        <th>PING</th>
+                    </tr>
+                </thead>
+                <tbody id="srvBody">
+                    <tr>
+                        <td colspan="5" class="offline">No public servers detected. Host one or click Refresh.</td>
+                    </tr>
+                </tbody>
             </table>
-            <div class="row" style="margin-top:20px"><button class="btn ghost" data-action="close-panel">Back</button></div>
+            <div class="row" style="margin-top:20px"><button class="btn ghost" data-action="close-panel">Back</button>
+            </div>
         </div>
     </div>
 
@@ -442,7 +2148,8 @@
                     </select>
                 </div>
             </div>
-            <div class="row" style="margin-top:26px"><button class="btn" data-action="confirm-host">Generate Room Code</button><button class="btn ghost" data-action="close-panel">Cancel</button></div>
+            <div class="row" style="margin-top:26px"><button class="btn" data-action="confirm-host">Generate Room
+                    Code</button><button class="btn ghost" data-action="close-panel">Cancel</button></div>
         </div>
     </div>
 
@@ -451,7 +2158,8 @@
             <h2>JOIN SERVER</h2>
             <div class="hintline">ENTER ROOM CODE</div>
             <input id="joinCodeInput" class="codeInput" type="text" placeholder="BSR-XXXX" maxlength="20" />
-            <div class="row" style="margin-top:20px"><button class="btn" data-action="do-join">Connect</button><button class="btn ghost" data-action="close-panel">Cancel</button></div>
+            <div class="row" style="margin-top:20px"><button class="btn" data-action="do-join">Connect</button><button
+                    class="btn ghost" data-action="close-panel">Cancel</button></div>
         </div>
     </div>
 
@@ -460,7 +2168,8 @@
             <h2>SELECT MAP</h2>
             <div class="hintline">CHOOSE BATTLEFIELD LAYOUT</div>
             <div class="mapGrid" id="mapGrid"></div>
-            <div class="row" style="margin-top:26px"><button class="btn ghost" data-action="close-panel">Back</button></div>
+            <div class="row" style="margin-top:26px"><button class="btn ghost" data-action="close-panel">Back</button>
+            </div>
         </div>
     </div>
 
@@ -469,14 +2178,20 @@
             <h2>SETTINGS</h2>
             <div class="hintline">INPUT &amp; PRESENTATION</div>
             <div class="settingsGrid">
-                <label>DISPLAY NAME</label><input id="setName" class="codeInput" type="text" maxlength="12" style="padding:6px; font-size:12px;" /><span></span>
+                <label>DISPLAY NAME</label><input id="setName" class="codeInput" type="text" maxlength="12"
+                    style="padding:6px; font-size:12px;" /><span></span>
                 <label>PLAYER SKIN</label><input id="setSkin" type="color" value="#e8ecf0" /><span></span>
                 <label>UI COLOR</label><input id="setColor" type="color" value="#ff7a1a" /><span></span>
-                <label>MASTER VOLUME</label><input id="setVol" type="range" min="0" max="1" step="0.02" value="0.6" /><span id="setVolVal">60%</span>
-                <label>MUSIC VOLUME</label><input id="setMusicVol" type="range" min="0" max="1" step="0.02" value="0.4" /><span id="setMusicVolVal">40%</span>
-                <label>FIELD OF VIEW</label><input id="setFov" type="range" min="70" max="120" step="1" value="90" /><span id="setFovVal">90°</span>
-                <label>MOUSE SENSITIVITY</label><input id="setSens" type="range" min="0.3" max="3" step="0.05" value="1" /><span id="setSensVal">1.00</span>
-                <label>SCOPE SENSITIVITY</label><input id="setScopeSens" type="range" min="0.1" max="2" step="0.05" value="0.8" /><span id="setScopeSensVal">0.80</span>
+                <label>MASTER VOLUME</label><input id="setVol" type="range" min="0" max="1" step="0.02"
+                    value="0.6" /><span id="setVolVal">60%</span>
+                <label>MUSIC VOLUME</label><input id="setMusicVol" type="range" min="0" max="1" step="0.02"
+                    value="0.4" /><span id="setMusicVolVal">40%</span>
+                <label>FIELD OF VIEW</label><input id="setFov" type="range" min="70" max="120" step="1"
+                    value="90" /><span id="setFovVal">90°</span>
+                <label>MOUSE SENSITIVITY</label><input id="setSens" type="range" min="0.3" max="3" step="0.05"
+                    value="1" /><span id="setSensVal">1.00</span>
+                <label>SCOPE SENSITIVITY</label><input id="setScopeSens" type="range" min="0.1" max="2" step="0.05"
+                    value="0.8" /><span id="setScopeSensVal">0.80</span>
                 <label>INVERT Y</label><input id="setInv" type="checkbox" /><span></span>
             </div>
             <div class="row" style="margin-top:26px;justify-content:space-between">
@@ -484,7 +2199,8 @@
                     <button class="btn" data-action="apply-settings">Apply</button>
                     <button class="btn ghost" data-action="close-panel">Back</button>
                 </div>
-                <button class="btn ghost" style="border-color:#ff3b3b;color:#ff3b3b" onclick="SaveSystem.reset()">RESET SAVE DATA</button>
+                <button class="btn ghost" style="border-color:#ff3b3b;color:#ff3b3b" onclick="SaveSystem.reset()">RESET
+                    SAVE DATA</button>
             </div>
         </div>
     </div>
@@ -508,11 +2224,22 @@
         const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3();
         const _e1 = new THREE.Euler();
 
-        const PUBLIC_ROOM_IDS = ['BSR-PUB-ALPHA-1','BSR-PUB-BRAVO-2','BSR-PUB-CHARLIE-3','BSR-PUB-DELTA-4','BSR-PUB-ECHO-5'];
+        const PUBLIC_ROOM_IDS = ['BSR-PUB-ALPHA-1', 'BSR-PUB-BRAVO-2', 'BSR-PUB-CHARLIE-3', 'BSR-PUB-DELTA-4', 'BSR-PUB-ECHO-5'];
 
         const CAMO_COLORS = { 'default': 0xffdd44, 'crimson': 0xff2244, 'cyber': 0x00ffff, 'emerald': 0x00ff66, 'royal': 0xffaa00, 'void': 0xaa00ff, 'dragon': 0xff0000 };
         const CAMO_NAMES = { 'default': 'Standard Issue', 'crimson': 'Crimson (Tracer)', 'cyber': 'Cyber Cyan (Tracer)', 'emerald': 'Emerald Toxic (Tracer)', 'royal': 'Royal Gold (Tracer)', 'void': 'Void Purple (Tracer)', 'dragon': 'Dragon (3D Model)' };
         const CAMO_DESCS = { 'default': 'Factory finish.', 'crimson': 'Blood-red digital blocks.', 'cyber': 'Circuit board cyan.', 'emerald': 'Hexagonal green plating.', 'royal': 'Diagonal gold stripes.', 'void': 'Starfield nebula.', 'dragon': 'A custom 3D dragon model that breathes fire.' };
+
+        // === NEW: skins + weapon challenges ===
+        const SKINS = {
+            operator: { name: 'OPERATOR', skin: '#e8ecf0', accent: '#ff7a1a' },
+            shadow: { name: 'SHADOW', skin: '#2a2f38', accent: '#8a5cff' },
+            ember: { name: 'EMBER', skin: '#e8b090', accent: '#ff5a1a' },
+            arctic: { name: 'ARCTIC', skin: '#d0e4f0', accent: '#40d0ff' },
+            toxic: { name: 'TOXIC', skin: '#9fe0a0', accent: '#3fe08a' },
+            void: { name: 'VOID', skin: '#40304a', accent: '#aa00ff' }
+        };
+        const WEAPON_CHALLENGES = { sniper: 25, kar98: 40, smg: 30, lmg: 60, ak47: 50, katana: 15 };
 
         const _camoTextureCache = {};
         function generateCamoTexture(camo) {
@@ -569,11 +2296,13 @@
             data: {
                 points: 0,
                 unlockedWeapons: ['rifle', 'shotgun', 'rocket', 'knife', 'kar98', 'smg', 'lmg', 'ak47', 'katana'],
-                unlockedCamos: ['rifle:default','shotgun:default','rocket:default','sniper:default','knife:default','kar98:default','smg:default','lmg:default','ak47:default','katana:default'],
-                equippedLoadout: ['rifle','shotgun','rocket','knife'],
+                unlockedCamos: ['rifle:default', 'shotgun:default', 'rocket:default', 'sniper:default', 'knife:default', 'kar98:default', 'smg:default', 'lmg:default', 'ak47:default', 'katana:default'],
+                equippedLoadout: ['rifle', 'shotgun', 'rocket', 'knife'],
                 equippedCamos: { rifle: 'default', shotgun: 'default', rocket: 'default', sniper: 'default', knife: 'default', kar98: 'default', smg: 'default', lmg: 'default', ak47: 'default', katana: 'default' },
                 settings: { volume: 0.6, musicVolume: 0.4, fov: 90, sensitivity: 1, scopeSensitivity: 0.8, invertY: false, uiColor: '#ff7a1a', skinColor: '#e8ecf0' },
-                playerName: 'OPERATOR-' + Math.floor(Math.random() * 999)
+                playerName: 'OPERATOR-' + Math.floor(Math.random() * 999),
+                challenges: {},
+                selectedSkin: 'operator'
             },
             load() {
                 try {
@@ -584,13 +2313,15 @@
                         const parsed = JSON.parse(s);
                         this.data = { ...this.data, ...parsed };
                         if (!this.data.equippedCamos) this.data.equippedCamos = { rifle: 'default', shotgun: 'default', rocket: 'default', sniper: 'default', knife: 'default', kar98: 'default', smg: 'default', lmg: 'default', ak47: 'default', katana: 'default' };
-                        if (!this.data.equippedLoadout) this.data.equippedLoadout = ['rifle','shotgun','rocket','knife'];
+                        if (!this.data.equippedLoadout) this.data.equippedLoadout = ['rifle', 'shotgun', 'rocket', 'knife'];
                         if (!this.data.settings) this.data.settings = { volume: 0.6, musicVolume: 0.4, fov: 90, sensitivity: 1, scopeSensitivity: 0.8, invertY: false, uiColor: '#ff7a1a', skinColor: '#e8ecf0' };
                         if (this.data.settings.scopeSensitivity === undefined) this.data.settings.scopeSensitivity = 0.8;
                         if (!this.data.settings.uiColor) this.data.settings.uiColor = '#ff7a1a';
                         if (!this.data.settings.skinColor) this.data.settings.skinColor = '#e8ecf0';
                         if (!this.data.playerName) this.data.playerName = 'OPERATOR-' + Math.floor(Math.random() * 999);
-                        const addWep = (k) => { if (!this.data.unlockedWeapons.includes(k)) this.data.unlockedWeapons.push(k); if (!this.data.unlockedCamos.includes(k+':default')) this.data.unlockedCamos.push(k+':default'); if (!this.data.equippedCamos[k]) this.data.equippedCamos[k] = 'default'; };
+                        if (!this.data.challenges) this.data.challenges = {};
+                        if (!this.data.selectedSkin) this.data.selectedSkin = 'operator';
+                        const addWep = (k) => { if (!this.data.unlockedWeapons.includes(k)) this.data.unlockedWeapons.push(k); if (!this.data.unlockedCamos.includes(k + ':default')) this.data.unlockedCamos.push(k + ':default'); if (!this.data.equippedCamos[k]) this.data.equippedCamos[k] = 'default'; };
                         addWep('knife'); addWep('kar98'); addWep('smg'); addWep('lmg'); addWep('ak47'); addWep('katana');
                         document.documentElement.style.setProperty('--accent', this.data.settings.uiColor);
                     }
@@ -602,7 +2333,7 @@
         SaveSystem.load();
 
         class AudioEngine {
-            constructor() { this.ready = false; this.volume = SaveSystem.data.settings.volume; this.listenerPos = new THREE.Vector3(); this.listenerRight = new THREE.Vector3(1,0,0); this._tmp = new THREE.Vector3(); this.onReadyCallback = null; }
+            constructor() { this.ready = false; this.volume = SaveSystem.data.settings.volume; this.listenerPos = new THREE.Vector3(); this.listenerRight = new THREE.Vector3(1, 0, 0); this._tmp = new THREE.Vector3(); this.onReadyCallback = null; }
             init() {
                 if (this.ready) { this.ctx.resume(); return; }
                 const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
@@ -717,54 +2448,97 @@
             flashbang() { this._noise({ dur: 1.5, gain: .8, freq: 8000, freqEnd: 1000, q: .5, type: 'bandpass', reverb: true }); this._sweep(1000, 100, 1.0, .5, 'sine'); }
             throw() { this._sweep(400, 200, .2, .2, 'sine'); }
             sukuna() { this._sweep(100, 50, 2.0, .8, 'sawtooth', 0, true); this._noise({ dur: 2.0, gain: .6, freq: 800, freqEnd: 100, q: 1, type: 'lowpass' }); }
-            domain() { this._sub(30, 3.0, 1.0); this._sweep(200, 50, 2.0, .8, 'sawtooth', 0, true); for(let i=0;i<10;i++) setTimeout(() => this._noise({ dur: .3, gain: .5, freq: 5000, freqEnd: 500, q: 2, pan: rand(-1,1) }), i*200); }
+            domain() { this._sub(30, 3.0, 1.0); this._sweep(200, 50, 2.0, .8, 'sawtooth', 0, true); for (let i = 0; i < 10; i++) setTimeout(() => this._noise({ dur: .3, gain: .5, freq: 5000, freqEnd: 500, q: 2, pan: rand(-1, 1) }), i * 200); }
         }
 
         const audio = new AudioEngine();
 
-        /* ===== SUKUNA VFX / MAP DESTRUCTION ===== */
-        window.sukunaSlashVfx = function(position, type = 'dismantle') {
+        /* ===== SUKUNA VFX / MAP DESTRUCTION (DISMANTLE REWORK) ===== */
+        window.sukunaSlashVfx = function (position, type = 'dismantle') {
+            if (type === 'cleave') {
+                // --- CLEAVE: unchanged original look ---
+                const group = new THREE.Group();
+                for (let i = 0; i < 9; i++) {
+                    const slash = new THREE.Group();
+                    slash.add(new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.09), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })));
+                    const core = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.03), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 1, depthWrite: false, side: THREE.DoubleSide }));
+                    core.position.z = 0.002; slash.add(core);
+                    slash.rotation.z = rand(-Math.PI, Math.PI); slash.rotation.x = rand(-0.7, 0.7);
+                    slash.position.set(rand(-0.4, 0.4), rand(-0.4, 0.4), rand(-0.2, 0.2));
+                    slash.userData.baseRot = slash.rotation.z;
+                    group.add(slash);
+                }
+                group.position.copy(position); game.scene.add(group);
+                const start = performance.now();
+                const animate = () => {
+                    const t = (performance.now() - start) / 380;
+                    if (t >= 1) { game.scene.remove(group); group.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); return; }
+                    group.children.forEach(s => { s.scale.setScalar(1 + t * 1.0); s.rotation.z = s.userData.baseRot + t * 0.35; s.children.forEach(c => { c.material.opacity = (1 - t) * (c.material.color.getHex() === 0xffffff ? 0.95 : 1); }); });
+                    requestAnimationFrame(animate);
+                };
+                animate();
+                return;
+            }
+            // --- DISMANTLE: upgraded VFX (richer than cleave) ---
             const group = new THREE.Group();
-            const count = type === 'cleave' ? 9 : 5;
-            for (let i = 0; i < count; i++) {
-                const slash = new THREE.Group();
-                slash.add(new THREE.Mesh(
-                    new THREE.PlaneGeometry(1.1, 0.09),
-                    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
-                ));
-                const core = new THREE.Mesh(
-                    new THREE.PlaneGeometry(0.95, 0.03),
-                    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 1, depthWrite: false, side: THREE.DoubleSide })
-                );
-                core.position.z = 0.002;
-                slash.add(core);
-                slash.rotation.z = rand(-Math.PI, Math.PI);
-                slash.rotation.x = rand(-0.7, 0.7);
-                slash.position.set(rand(-0.4, 0.4), rand(-0.4, 0.4), rand(-0.2, 0.2));
-                slash.userData.baseRot = slash.rotation.z;
-                group.add(slash);
+            const red = 0xff1a1a;
+            const light = new THREE.PointLight(red, 10, 6, 2); group.add(light);
+            const core = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 10),
+                new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false }));
+            group.add(core);
+            const slashCount = 4;
+            const slashes = [];
+            for (let i = 0; i < slashCount; i++) {
+                const s = new THREE.Group();
+                const glow = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.16),
+                    new THREE.MeshBasicMaterial({ color: red, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+                const blade = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 0.06),
+                    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 1, depthWrite: false, side: THREE.DoubleSide }));
+                blade.position.z = 0.01;
+                s.add(glow); s.add(blade);
+                s.rotation.z = (i / slashCount) * Math.PI + rand(-0.2, 0.2);
+                s.rotation.x = rand(-0.5, 0.5);
+                s.position.set(rand(-0.2, 0.2), rand(-0.2, 0.2), rand(-0.1, 0.1));
+                s.userData.baseRot = s.rotation.z;
+                group.add(s); slashes.push(s);
+            }
+            const sparks = [];
+            for (let i = 0; i < 14; i++) {
+                const sp = new THREE.Mesh(new THREE.SphereGeometry(0.03, 4, 4),
+                    new THREE.MeshBasicMaterial({ color: Math.random() < 0.5 ? red : 0xffffff, transparent: true, opacity: 1 }));
+                group.add(sp);
+                sparks.push({ mesh: sp, vel: new THREE.Vector3(rand(-4, 4), rand(-4, 4), rand(-4, 4)), life: 1 });
             }
             group.position.copy(position);
             game.scene.add(group);
             const start = performance.now();
             const animate = () => {
-                const t = (performance.now() - start) / 380;
+                const t = (performance.now() - start) / 460;
                 if (t >= 1) {
                     game.scene.remove(group);
                     group.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
                     return;
                 }
-                group.children.forEach(s => {
-                    s.scale.setScalar(1 + t * 1.0);
-                    s.rotation.z = s.userData.baseRot + t * 0.35;
-                    s.children.forEach(c => { c.material.opacity = (1 - t) * (c.material.color.getHex() === 0xffffff ? 0.95 : 1); });
+                const inv = 1 - t;
+                core.scale.setScalar(1 + t * 3.5); core.material.opacity = inv;
+                light.intensity = 10 * inv;
+                slashes.forEach(s => {
+                    s.scale.setScalar(1 + t * 1.4);
+                    s.rotation.z = s.userData.baseRot + t * 0.6;
+                    s.children.forEach(c => { c.material.opacity = inv * (c.material.color.getHex() === 0 ? 1 : 0.9); });
+                });
+                sparks.forEach(sp => {
+                    sp.life -= 0.06; sp.vel.y -= 6 * 0.016;
+                    sp.mesh.position.addScaledVector(sp.vel, 0.016);
+                    sp.mesh.material.opacity = Math.max(0, sp.life);
+                    sp.mesh.scale.setScalar(0.6 + (1 - sp.life) * 0.6);
                 });
                 requestAnimationFrame(animate);
             };
             animate();
         };
 
-        window.damageMapMesh = function(mesh, hitPoint, damage) {
+        window.damageMapMesh = function (mesh, hitPoint, damage) {
             if (!mesh || !mesh.userData?.destructible) return;
             if (!mesh.userData._voxelState) mesh.userData._voxelState = { regenTimer: null };
             const box = new THREE.Box3().setFromObject(mesh);
@@ -928,7 +2702,7 @@
                 const s = step % 16; const t = this.currentTrack;
                 if (t === 'menu') {
                     const bar = Math.floor(step / 16) % 4;
-                    const chords = [[220.00, 261.63, 329.63],[174.61, 220.00, 261.63],[261.63, 329.63, 392.00],[196.00, 246.94, 293.66]];
+                    const chords = [[220.00, 261.63, 329.63], [174.61, 220.00, 261.63], [261.63, 329.63, 392.00], [196.00, 246.94, 293.66]];
                     if (s === 0) for (const f of chords[bar]) { this._note(f, time, 4.5, 0.035, 'sawtooth', { type: 'lowpass', freq: 700, q: 2 }); this._note(f / 2, time, 4.5, 0.025, 'sine'); }
                     if (s === 6) this._note(659.25, time, 1.5, 0.03, 'triangle');
                     if (s === 12) this._note(783.99, time, 1.2, 0.025, 'triangle');
@@ -978,10 +2752,10 @@
                 this.mouseDX = 0; this.mouseDY = 0; this.left = false; this.right = false; this.wheel = 0; this.locked = false;
                 this.sensitivity = SaveSystem.data.settings.sensitivity; this.invertY = SaveSystem.data.settings.invertY; this.onLockChange = null; this.onLockError = null;
                 addEventListener('keydown', e => {
-                    if (document.activeElement && ['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+                    if (document.activeElement && ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
                     if (e.code === 'Tab') { e.preventDefault(); if (this.onTab) this.onTab(true); return; }
                     if (e.repeat) return; const c = e.code; this.keys.add(c); this.pressed.add(c);
-                    if (['Space','KeyR','KeyF','KeyE','KeyQ','KeyG','KeyB','KeyV','KeyN','Digit1','Digit2','Digit3','Digit4','Digit5'].includes(c)) e.preventDefault();
+                    if (['Space', 'KeyR', 'KeyF', 'KeyE', 'KeyQ', 'KeyG', 'KeyB', 'KeyV', 'KeyN', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5'].includes(c)) e.preventDefault();
                 });
                 addEventListener('keyup', e => { if (e.code === 'Tab') { if (this.onTab) this.onTab(false); return; } this.keys.delete(e.code); });
                 addEventListener('blur', () => { this.keys.clear(); this.left = this.right = false; });
@@ -1196,10 +2970,10 @@
                 this.matchStarted = true;
                 const mode = document.getElementById('hostMode').value;
                 const map = document.getElementById('hostMap').value;
-                const spawns = this.game.world.spawnPoints;
+                const spawns = (this.game.world && this.game.world.spawnPoints) ? this.game.world.spawnPoints : null;
                 let i = 0;
                 for (const id in this.players) {
-                    this.players[id].state.spawnIndex = i % spawns.length;
+                    this.players[id].state.spawnIndex = spawns ? (i % spawns.length) : undefined;
                     i++;
                 }
                 this.broadcast({ type: 'START_GAME', mode, map, spawns: this.players });
@@ -1224,11 +2998,24 @@
                     if (this.isHost) this.broadcast(data);
                 } else if (data.type === 'HIT') {
                     if (data.targetId === this.myId) {
+                        const attackerPos = (data.attackerId && this.players[data.attackerId] && this.players[data.attackerId].state && this.players[data.attackerId].state.pos)
+                            ? new THREE.Vector3(...this.players[data.attackerId].state.pos) : null;
                         this.game.lastAttacker = data.attackerId || 'Unknown';
-                        if (this.game.player && this.game.player.alive) {
-                            let atkPos = null;
-                            if (data.attackerId && this.players[data.attackerId] && this.players[data.attackerId].state) atkPos = new THREE.Vector3(...this.players[data.attackerId].state.pos);
-                            this.game.player.onHit(data.damage, data.isMelee || false, atkPos);
+                        const canDamage = !this.game.isCoop() || !data.attackerId || data.attackerId === 'bot';
+                        const deflectNo = data.deflect || 0;
+                        const p = this.game.player;
+                        if (canDamage && p && p.alive) {
+                            const parrying = (p.parryTimer > 0) && p.currentWeapon && p.currentWeapon.kind === 'katana';
+                            if (parrying && data.attackerId && this.players[data.attackerId] && deflectNo < 6) {
+                                this.broadcast({ type: 'HIT', targetId: data.attackerId, damage: data.damage, attackerId: this.myId, attackerName: this.myName, deflect: deflectNo + 1, isParry: true });
+                                p.parryTimer = 0.15;
+                                this.game.effects.katanaParry(p.pos.clone().add(new THREE.Vector3(0, 1.2, 0)));
+                                this.game.ui.showCenterMsg('PARRY!', 'DEFLECTED', 700);
+                                audio.perfect();
+                            } else {
+                                if (data.isParry) this.game.ui.showCenterMsg('DEFLECTED', '', 500);
+                                p.onHit(data.damage, data.isMelee || false, attackerPos);
+                            }
                         }
                     }
                     if (this.isHost) this.broadcast(data);
@@ -1252,8 +3039,8 @@
                 } else if (data.type === 'FLASH') {
                     if (this.game.player && this.game.player.pos.distanceTo(new THREE.Vector3(...data.pos)) < 15) {
                         const toFlash = new THREE.Vector3(...data.pos).sub(this.game.camera.position).normalize();
-                        const forward = new THREE.Vector3(0,0,-1).applyQuaternion(this.game.camera.quaternion);
-                        if (toFlash.dot(forward) > 0.5) this.game.ui.flashbang();
+                        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.game.camera.quaternion);
+                        if (toFlash.dot(forward) > 0.5) { this.game.ui.flashbang(); this.game.player.confusedTimer = 2.0; }
                     }
                     if (this.isHost) this.broadcast(data);
                 } else if (data.type === 'POWERUP_SPAWN') {
@@ -1263,9 +3050,20 @@
                         this.game.ui.showCenterMsg("RYOMEN SUKUNA ARRIVES 8:30 PM", "", 5000);
                         audio.domain();
                     }
+                } else if (data.type === 'DOMAIN_TELEPORT') {
+                    if (this.game.player && this.game.player.alive) { this.game.player.pos.set(...data.pos); this.game.player.vel.set(0, 0, 0); this.game.player._resetViewState(); }
                 } else if (data.type === 'DOMAIN') {
-                    if (data.playerId !== this.myId) this.game.ui.showCenterMsg("DOMAIN EXPANSION MALEVOLENT SHRINE", "", 4000);
+                    if (data.playerId === this.myId) return;
+                    this.game.ui.showCenterMsg("DOMAIN EXPANSION MALEVOLENT SHRINE", "", 4000);
                     this.game.triggerDomainExpansion(false);
+                } else if (data.type === 'DOMAIN_END') {
+                    this.game.endDomain();
+                } else if (data.type === 'CLASH_START') {
+                    if (data.oppId === this.myId) this.game.beginClash(data.initiatorId, data.duration);
+                } else if (data.type === 'CLASH_SCORE') {
+                    if (this.game.clash && this.game.clash.active && data.id === this.game.clash.oppId) this.game.clash.oppScore = data.score;
+                } else if (data.type === 'CLASH_RESULT') {
+                    this.game.resolveClash(data.winnerId);
                 } else if (data.type === 'SYNC_LEADERBOARD') {
                     this.players = data.players;
                     this.updateLeaderboard();
@@ -1284,8 +3082,10 @@
                             state: {
                                 pos: [p.pos.x, p.pos.y, p.pos.z], vel: [p.vel.x, p.vel.y, p.vel.z],
                                 yaw: p.yaw, pitch: p.pitch, health: p.health, weapon: w ? w.kind : 'rifle',
+                                weaponCamo: w ? (w.camo || 'default') : 'default',
                                 isCrouching: p.crouching, isSliding: p.sliding, onGround: p.onGround, alive: p.alive,
                                 paused: this.game.paused, tkFreezeTimer: p.tkFreezeTimer,
+                                sukuna: p.sukunaTimer > 0, domainActive: this.game.domainActive,
                                 skinColor: SaveSystem.data.settings.skinColor, uiColor: SaveSystem.data.settings.uiColor
                             }
                         });
@@ -1307,7 +3107,7 @@
                         mesh = buildRemoteAvatar(pData.name, pData.skinColor, pData.uiColor);
                         this.game.scene.add(mesh);
                         this.game.remoteMeshes[id] = mesh;
-                        this._updateRemoteWeapon(mesh, pData.state.weapon || 'rifle');
+                        this._updateRemoteWeapon(mesh, pData.state.weapon || 'rifle', pData.state.weaponCamo || 'default');
                     }
                     const targetPos = new THREE.Vector3(...pData.state.pos);
                     const targetYaw = pData.state.yaw || 0;
@@ -1322,22 +3122,23 @@
                     else { mesh.rotation.z = damp(mesh.rotation.z, 0, 8, dt); }
                     if (pData.state.tkFreezeTimer > 0) { mesh.rotation.x = Math.sin(performance.now() * .01) * 0.1; mesh.position.y += Math.sin(performance.now() * .01) * 0.05; }
                     else { mesh.rotation.x = damp(mesh.rotation.x, 0, 10, dt); }
-                    if (mesh.userData.currentWeapon !== pData.state.weapon) this._updateRemoteWeapon(mesh, pData.state.weapon || 'rifle');
+                    if (mesh.userData.currentWeapon !== pData.state.weapon || mesh.userData.currentCamo !== (pData.state.weaponCamo || 'default')) this._updateRemoteWeapon(mesh, pData.state.weapon || 'rifle', pData.state.weaponCamo || 'default');
                     this._updateRemoteAnimation(mesh, pData.state, dt);
                 }
             }
-            _updateRemoteWeapon(mesh, kind) {
+            _updateRemoteWeapon(mesh, kind, camo) {
                 if (mesh.userData.weaponMesh) {
                     mesh.remove(mesh.userData.weaponMesh);
                     mesh.userData.weaponMesh.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) { if (Array.isArray(o.material)) o.material.forEach(m => m.dispose()); else o.material.dispose(); } });
                 }
-                const wm = buildWeaponMesh(kind || 'rifle', 'default');
+                const wm = buildWeaponMesh(kind || 'rifle', camo || 'default');
                 wm.scale.set(0.65, 0.65, 0.65);
                 wm.position.set(0.28, 1.05, -0.28);
                 wm.rotation.set(0, 0, 0);
                 mesh.add(wm);
                 mesh.userData.weaponMesh = wm;
                 mesh.userData.currentWeapon = kind;
+                mesh.userData.currentCamo = camo || 'default';
             }
             _updateRemoteAnimation(mesh, state, dt) {
                 const vx = state.vel ? state.vel[0] : 0, vz = state.vel ? state.vel[2] : 0;
@@ -1537,13 +3338,13 @@
                         const pipe = new THREE.Mesh(new THREE.CylinderGeometry(.3, .3, 55, 8), mats.pillar);
                         pipe.rotation.z = Math.PI / 2; pipe.position.set(0, 7, i * 8); scene.add(pipe); this.meshes.push(pipe);
                     }
-                    for (const [cx, cy, cz, cw, ch] of [[-10,.6,-10,4,3],[10,.6,10,4,3],[10,.6,-10,3,3],[-10,.6,10,3,3],[22,.6,0,4,4],[-22,.6,0,4,4],[0,.6,22,5,3],[0,.6,-22,5,3]]) this._addBox(cw, ch, cw, cx, cy + ch / 2 - .4, cz, mats.crate);
+                    for (const [cx, cy, cz, cw, ch] of [[-10, .6, -10, 4, 3], [10, .6, 10, 4, 3], [10, .6, -10, 3, 3], [-10, .6, 10, 3, 3], [22, .6, 0, 4, 4], [-22, .6, 0, 4, 4], [0, .6, 22, 5, 3], [0, .6, -22, 5, 3]]) this._addBox(cw, ch, cw, cx, cy + ch / 2 - .4, cz, mats.crate);
                     const pad = new THREE.Mesh(new THREE.BoxGeometry(3, .1, 3), mats.pad);
                     pad.position.set(0, 3.05, 0); pad.receiveShadow = true; scene.add(pad); this.meshes.push(pad);
                     this.jumpPads.push({ pos: new THREE.Vector3(0, 3.15, 0) });
                     this.playerSpawn.set(0, .2, 24);
                     this.spawnPoints = [new THREE.Vector3(-15, .2, -15), new THREE.Vector3(15, .2, -15), new THREE.Vector3(-15, .2, 15), new THREE.Vector3(15, .2, 15), new THREE.Vector3(0, .2, 24), new THREE.Vector3(0, .2, -24)];
-                    this.botSpawns = [new THREE.Vector3(-15,.2,-15), new THREE.Vector3(15,.2,-15), new THREE.Vector3(-15,.2,15), new THREE.Vector3(15,.2,15), new THREE.Vector3(0,.2,20), new THREE.Vector3(0,.2,-20)];
+                    this.botSpawns = [new THREE.Vector3(-15, .2, -15), new THREE.Vector3(15, .2, -15), new THREE.Vector3(-15, .2, 15), new THREE.Vector3(15, .2, 15), new THREE.Vector3(0, .2, 20), new THREE.Vector3(0, .2, -20)];
                 } else if (map === 'void') {
                     const voidScene = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshBasicMaterial({ color: 0x000000 }));
                     voidScene.rotation.x = -Math.PI / 2; voidScene.position.y = -30; scene.add(voidScene);
@@ -1578,7 +3379,6 @@
                     pad.position.set(0, .05, 0); pad.receiveShadow = true; scene.add(pad); this.meshes.push(pad);
                     this.jumpPads.push({ pos: new THREE.Vector3(0, .15, 0) });
                     this.playerSpawn.set(0, 1, 15);
-                    // Fixed Zenith spawns: use ground-level open points instead of pillar tops
                     this.spawnPoints = [new THREE.Vector3(-14, 1, -14), new THREE.Vector3(14, 1, -14), new THREE.Vector3(-14, 1, 14), new THREE.Vector3(14, 1, 14), new THREE.Vector3(0, 1, 0)];
                     this.botSpawns = [...this.spawnPoints];
                 } else {
@@ -1593,18 +3393,18 @@
                     this._addBox(4, .4, 52, -26, 4, 0, mats.walk);
                     this._addBox(6, .4, 8, 0, 2.2, 18, mats.walk);
                     this._addBox(6, .4, 8, 0, 2.2, -18, mats.walk);
-                    for (const [px, pz] of [[-10,-10],[10,-10],[-10,10],[10,10]]) this._addBox(2.4, 10, 2.4, px, 5, pz, mats.pillar);
+                    for (const [px, pz] of [[-10, -10], [10, -10], [-10, 10], [10, 10]]) this._addBox(2.4, 10, 2.4, px, 5, pz, mats.pillar);
                     this._addBox(8, .4, 8, 14, 8, -14, mats.walk);
                     this._addBox(8, .4, 8, -14, 8, 14, mats.walk);
-                    for (const [cx, cy, cz, cw, ch] of [[4,.6,5,4,3],[-6,.6,-4,4,4],[8,.6,-8,3,3],[-8,.6,8,3,3],[16,.6,3,3,3],[-16,.6,-3,3,3],[0,.6,-14,5,3],[0,.6,14,5,3]]) this._addBox(cw, ch, cw, cx, cy + ch / 2 - .4, cz, mats.crate);
-                    for (const [px, pz] of [[-22,-22],[22,22]]) {
+                    for (const [cx, cy, cz, cw, ch] of [[4, .6, 5, 4, 3], [-6, .6, -4, 4, 4], [8, .6, -8, 3, 3], [-8, .6, 8, 3, 3], [16, .6, 3, 3, 3], [-16, .6, -3, 3, 3], [0, .6, -14, 5, 3], [0, .6, 14, 5, 3]]) this._addBox(cw, ch, cw, cx, cy + ch / 2 - .4, cz, mats.crate);
+                    for (const [px, pz] of [[-22, -22], [22, 22]]) {
                         const pad = new THREE.Mesh(new THREE.BoxGeometry(3, .1, 3), mats.pad);
                         pad.position.set(px, .05, pz); pad.receiveShadow = true; scene.add(pad); this.meshes.push(pad);
                         this.jumpPads.push({ pos: new THREE.Vector3(px, .15, pz) });
                     }
                     this.playerSpawn.set(0, .2, 26);
                     this.spawnPoints = [new THREE.Vector3(-22, .2, -22), new THREE.Vector3(22, .2, -22), new THREE.Vector3(-22, .2, 22), new THREE.Vector3(22, .2, 22), new THREE.Vector3(0, .2, 26), new THREE.Vector3(0, .2, -26)];
-                    this.botSpawns = [new THREE.Vector3(-20,.2,-20),new THREE.Vector3(20,.2,-20),new THREE.Vector3(-20,.2,20),new THREE.Vector3(20,.2,20),new THREE.Vector3(0,4.4,-24),new THREE.Vector3(0,4.4,24)];
+                    this.botSpawns = [new THREE.Vector3(-20, .2, -20), new THREE.Vector3(20, .2, -20), new THREE.Vector3(-20, .2, 20), new THREE.Vector3(20, .2, 20), new THREE.Vector3(0, 4.4, -24), new THREE.Vector3(0, 4.4, 24)];
                 }
                 this._addBox(.4, .1, 24, -28.4, .6, 0, mats.ice);
                 this._addBox(.4, .1, 24, 28.4, .6, 0, mats.ice);
@@ -1622,7 +3422,7 @@
                 const clear = (p) => {
                     const up = new THREE.Raycaster(p.clone().add(new THREE.Vector3(0, 0.6, 0)), new THREE.Vector3(0, 1, 0), 0, 2.5);
                     if (this.meshes.length && up.intersectObjects(this.meshes, false).length) return false;
-                    const dirs = [new THREE.Vector3(1,0,0), new THREE.Vector3(-1,0,0), new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,-1)];
+                    const dirs = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1)];
                     for (const d of dirs) {
                         const r = new THREE.Raycaster(p.clone().add(new THREE.Vector3(0, 0.6, 0)), d, 0, 1.5);
                         if (this.meshes.length && r.intersectObjects(this.meshes, false).length) return false;
@@ -1701,6 +3501,7 @@
                 this._jumpBuffer = 0; this._spaceWasDown = false;
                 this.deathAnimT = 0;
                 this.tkFreezeTimer = 0;
+                this.confusedTimer = 0;
                 this.sukunaTimer = 0;
                 this.domainCooldown = 0;
                 this.domainUsed = false;
@@ -1745,9 +3546,24 @@
                 this.flashbangs = 2; this.flashbangCooldown = 0; this._swingAnim = 0;
                 this.sukunaTimer = 0; this.domainCooldown = 0; this.domainUsed = false; this.aimbotTimer = 0; this.savedWeapons = null; this.savedAbility = null;
                 this._prevRight = false; this.parryTimer = 0; this.parryCooldown = 0;
+                this.confusedTimer = 0;
                 for (const w of this.weapons) if (w) this.armory.refill(w);
                 this.armory.equip(this, 0);
                 this.game.camera.rotation.set(0, 0, 0);
+                this._resetViewState();
+            }
+            _resetViewState() {
+                this.pitch = 0;
+                this._strafeLean = 0;
+                this.pitchRecover = 0;
+                this.pitchRecoverTimer = 0;
+                this.swayX = 0; this.swayY = 0;
+                this._swingAnim = 0;
+                if (this.game.camera) {
+                    this.game.camera.rotation.set(0, 0, 0);
+                    _e1.set(0, this.yaw, 0, 'YXZ');
+                    this.game.camera.quaternion.setFromEuler(_e1);
+                }
             }
             activateSukuna() {
                 if (this.sukunaTimer > 0) return;
@@ -1787,12 +3603,22 @@
                 }
                 document.getElementById('hud').classList.remove('sukuna-mode');
                 window.sukunaHandVfx.remove();
+                this._resetViewState();
                 this.game.ui.showCenterMsg("SUKUNA EXPIRED", "WEAPONS RESTORED", 2000);
             }
             useDomainExpansion() {
                 if (this.domainUsed) { this.game.ui.showCenterMsg("DOMAIN ON COOLDOWN", "", 1000); return; }
-                this.domainUsed = true;
-                this.domainCooldown = 30;
+                this.domainUsed = true; this.domainCooldown = 30;
+                const g = this.game;
+                let clashOpp = null;
+                if (g.isMultiplayer) {
+                    for (const id in g.network.players) {
+                        if (id === g.network.myId) continue;
+                        const p = g.network.players[id];
+                        if (p.state && (p.state.domainActive || p.state.sukuna)) { clashOpp = id; break; }
+                    }
+                }
+                if (clashOpp) { this.game.ui.showCenterMsg('DOMAIN CLASH', 'SPAM [SPACE] TO WIN', 2500); g.startDomainClash(clashOpp); return; }
                 this.game.ui.showCenterMsg("DOMAIN EXPANSION MALEVOLENT SHRINE", "", 5000);
                 this.game.network.broadcast({ type: 'DOMAIN', playerId: this.game.network.myId });
                 this.game.triggerDomainExpansion(true);
@@ -1814,6 +3640,7 @@
                 if (!this.alive) {
                     this.deathAnimT += dt;
                     this.game.camera.position.y = damp(this.game.camera.position.y, this.pos.y + 0.3, 4, dt);
+                    this._strafeLean = damp(this._strafeLean, 0, 8, dt);
                     this.game.camera.rotation.z = damp(this.game.camera.rotation.z, 0.9, 3, dt);
                     this.game.camera.rotation.x = damp(this.game.camera.rotation.x, -0.5, 3, dt);
                     this.viewModelRoot.visible = false;
@@ -1829,6 +3656,7 @@
                 if (this.aimbotTimer > 0) this.aimbotTimer -= dt;
                 if (this.parryTimer > 0) this.parryTimer -= dt;
                 if (this.parryCooldown > 0) this.parryCooldown -= dt;
+                if (this.confusedTimer > 0) this.confusedTimer -= dt;
                 if (this.flashbangCooldown > 0) {
                     this.flashbangCooldown -= dt;
                     if (this.flashbangCooldown <= 0) { this.flashbangs = Math.min(2, this.flashbangs + 1); this.game.ui.updateFlashbangs(this.flashbangs, 2); }
@@ -1857,7 +3685,7 @@
                 if (this.aimbotTimer > 0) {
                     let closest = null; let minDist = 999;
                     for (const b of this.game.bots) { if (!b.alive) continue; const d = this.pos.distanceTo(b.pos); if (d < minDist && d < 100) { minDist = d; closest = b; } }
-                    if (this.game.isMultiplayer) {
+                    if (this.game.isMultiplayer && !this.game.isCoop()) {
                         for (const id in this.game.network.players) {
                             if (id === this.game.network.myId) continue;
                             const pData = this.game.network.players[id];
@@ -1879,13 +3707,17 @@
                     this.yaw -= this.input.mouseDX * sens;
                     this.pitch -= this.input.mouseDY * sens * (this.input.invertY ? -1 : 1);
                 }
+                if (this.confusedTimer > 0) {
+                    this.yaw += Math.sin(performance.now() * 0.004) * 0.004;
+                    this.pitch += Math.cos(performance.now() * 0.005) * 0.003;
+                }
                 if (this.pitchRecoverTimer > 0) this.pitchRecoverTimer -= dt;
                 else if (Math.abs(this.pitchRecover) > .001) { const r = Math.min(Math.abs(this.pitchRecover), dt * 2.5); this.pitch -= sign(this.pitchRecover) * r; this.pitchRecover -= sign(this.pitchRecover) * r; }
                 this.pitch = clamp(this.pitch, -Math.PI / 2 + .02, Math.PI / 2 - .02);
                 const strafe = (this.input.down('KeyD') ? 1 : 0) - (this.input.down('KeyA') ? 1 : 0);
                 const targetLean = this.onGround ? -strafe * .06 : (this.vel.length() > 3 ? -strafe * .14 : -strafe * .04);
                 this._strafeLean = damp(this._strafeLean, targetLean, 8, dt);
-                _e1.set(this.pitch, this.yaw, this._strafeLean * .5, 'YXZ');
+                _e1.set(this.pitch, this.yaw, clamp(this._strafeLean, -0.3, 0.3) * .5, 'YXZ');
                 this.game.camera.quaternion.setFromEuler(_e1);
                 this.swayX = damp(this.swayX, clamp(-this.input.mouseDX * .0006, -.05, .05), 12, 1 / 60);
                 this.swayY = damp(this.swayY, clamp(this.input.mouseDY * .0006, -.05, .05), 12, 1 / 60);
@@ -2001,9 +3833,10 @@
                 if (this.input.hit('KeyE') && this.sukunaTimer > 0) this.useDomainExpansion();
                 if (weapon.kind === 'katana' && this.input.right && !this._prevRight) {
                     if (this.parryCooldown <= 0) {
-                        this.parryTimer = 0.8;
-                        this.parryCooldown = 20;
-                        this.game.ui.showCenterMsg('PARRY READY', 'BLOCKING BULLETS', 1500);
+                        this.parryTimer = 0.9;
+                        this.parryCooldown = 6;
+                        this.game.effects.katanaParry(this.pos.clone().add(new THREE.Vector3(0, 1.2, 0)));
+                        this.game.ui.showCenterMsg('PARRY READY', 'BLOCK + REFLECT BULLETS', 1500);
                         audio.shoot('knife');
                     } else {
                         this.game.ui.showCenterMsg('PARRY COOLDOWN', Math.ceil(this.parryCooldown) + 's', 800);
@@ -2052,7 +3885,7 @@
                     const hits = ray.intersectObjects(b.hitboxes, false);
                     if (hits.length > 0) { best = b; bestPoint = hits[0].point; break; }
                 }
-                if (this.game.isMultiplayer) {
+                if (this.game.isMultiplayer && !this.game.isCoop()) {
                     for (const id in this.game.network.players) {
                         if (id === this.game.network.myId) continue;
                         const pData = this.game.network.players[id];
@@ -2156,8 +3989,14 @@
                         const forward = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
                         if (dir.dot(forward) < -0.3) blocked = false;
                     }
-                    if (blocked) { this.parryTimer = 0; this.game.ui.showCenterMsg('PARRY', '', 1000); audio.perfect(); return; }
+                    if (blocked) {
+                        this.parryTimer = 0;
+                        this.game.ui.showCenterMsg('PARRY', '', 1000); audio.perfect();
+                        this.game.effects.katanaParry(this.pos.clone().add(new THREE.Vector3(0, 1.2, 0)));
+                        return;
+                    }
                 }
+                if (this.confusedTimer > 0) dmg *= 0.85;
                 this.health -= dmg; this._damageShake = Math.min(.5, dmg / 40);
                 if (this.health <= 0) {
                     this.health = 0; this.alive = false; this.deathAnimT = 0;
@@ -2177,9 +4016,9 @@
         function buildWeaponMesh(kind, camo = 'default') {
             const g = new THREE.Group();
             const tex = generateCamoTexture(camo);
-            const bodyMat = new THREE.MeshStandardMaterial({ map: tex, color: 0xffffff, metalness: .85, roughness: .35 });
-            const darkMat = new THREE.MeshStandardMaterial({ color: 0x0a0d11, metalness: .7, roughness: .5 });
-            const accentMat = new THREE.MeshStandardMaterial({ color: 0x1a1f26, emissive: CAMO_COLORS[camo] || 0xffdd44, emissiveIntensity: 1.5, metalness: .4, roughness: .4 });
+            const bodyMat = new THREE.MeshStandardMaterial({ map: tex, color: 0xffffff, metalness: .9, roughness: .3 });
+            const darkMat = new THREE.MeshStandardMaterial({ color: 0x0a0d11, metalness: .75, roughness: .45 });
+            const accentMat = new THREE.MeshStandardMaterial({ color: 0x1a1f26, emissive: CAMO_COLORS[camo] || 0xffdd44, emissiveIntensity: 2.1, metalness: .4, roughness: .35 });
             if (camo === 'dragon') {
                 const scaleMat = new THREE.MeshStandardMaterial({ color: 0x220000, emissive: 0xff0000, emissiveIntensity: 0.5, roughness: 0.6 });
                 const spikeMat = new THREE.MeshStandardMaterial({ color: 0x550000, emissive: 0xff2200, emissiveIntensity: 0.8, roughness: 0.4 });
@@ -2190,16 +4029,16 @@
                 head.position.set(0, .06, -.85); g.add(head);
                 const snout = new THREE.Mesh(new THREE.BoxGeometry(.06, .06, .15), spikeMat);
                 snout.position.set(0, .02, -.95); g.add(snout);
-                for(let i=0; i<2; i++) addBox(g, .01, .02, .02, -.02 + i*.04, -.01, -.98, darkMat);
-                for(let i=0; i<2; i++) { const horn = new THREE.Mesh(new THREE.ConeGeometry(.02, .15, 4), spikeMat); horn.rotation.x = -Math.PI / 4; horn.rotation.z = (i===0 ? -Math.PI/6 : Math.PI/6); horn.position.set(i===0 ? -.06 : .06, .1, -.75); g.add(horn); }
+                for (let i = 0; i < 2; i++) addBox(g, .01, .02, .02, -.02 + i * .04, -.01, -.98, darkMat);
+                for (let i = 0; i < 2; i++) { const horn = new THREE.Mesh(new THREE.ConeGeometry(.02, .15, 4), spikeMat); horn.rotation.x = -Math.PI / 4; horn.rotation.z = (i === 0 ? -Math.PI / 6 : Math.PI / 6); horn.position.set(i === 0 ? -.06 : .06, .1, -.75); g.add(horn); }
                 addBox(g, .02, .02, .02, -.04, .06, -.88, new THREE.MeshBasicMaterial({ color: 0xffff00 }));
                 addBox(g, .02, .02, .02, .04, .06, -.88, new THREE.MeshBasicMaterial({ color: 0xffff00 }));
                 const wingMat = new THREE.MeshStandardMaterial({ color: 0x330000, emissive: 0x880000, side: THREE.DoubleSide });
-                for(let i=0; i<2; i++) { const wing = new THREE.Mesh(new THREE.PlaneGeometry(.25, .15), wingMat); wing.rotation.y = (i===0 ? Math.PI/3 : -Math.PI/3); wing.position.set(i===0 ? -.15 : .15, .08, -.3); g.add(wing); }
-                for(let i=0; i<5; i++) { const segment = new THREE.Mesh(new THREE.CylinderGeometry(.02 - i*0.003, .02 - (i-1)*0.003, .1, 4), scaleMat); segment.rotation.x = Math.PI / 2; segment.position.set(0, .01, .1 + i*0.1); g.add(segment); }
+                for (let i = 0; i < 2; i++) { const wing = new THREE.Mesh(new THREE.PlaneGeometry(.25, .15), wingMat); wing.rotation.y = (i === 0 ? Math.PI / 3 : -Math.PI / 3); wing.position.set(i === 0 ? -.15 : .15, .08, -.3); g.add(wing); }
+                for (let i = 0; i < 5; i++) { const segment = new THREE.Mesh(new THREE.CylinderGeometry(.02 - i * 0.003, .02 - (i - 1) * 0.003, .1, 4), scaleMat); segment.rotation.x = Math.PI / 2; segment.position.set(0, .01, .1 + i * 0.1); g.add(segment); }
                 const tailSpike = new THREE.Mesh(new THREE.ConeGeometry(.03, .1, 3), spikeMat);
                 tailSpike.rotation.x = -Math.PI / 2; tailSpike.position.set(0, .01, .6); g.add(tailSpike);
-                for(let i=0; i<6; i++) { const spike = new THREE.Mesh(new THREE.ConeGeometry(.015, .08, 3), spikeMat); spike.position.set(0, .08, -.5 + i*0.12); g.add(spike); }
+                for (let i = 0; i < 6; i++) { const spike = new THREE.Mesh(new THREE.ConeGeometry(.015, .08, 3), spikeMat); spike.position.set(0, .08, -.5 + i * 0.12); g.add(spike); }
                 addHands(g, .02, -.05, -.2, 0, -.02, -.65);
             } else if (kind === 'rifle') {
                 addBox(g, .06, .09, .85, 0, .02, -.35, bodyMat); addBox(g, .05, .05, .5, 0, .02, -.95, darkMat);
@@ -2242,9 +4081,15 @@
                 addHands(g, .02, -.05, -.1, 0, -.02, -.1);
             } else if (kind === 'katana') {
                 const metal = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 1.0, roughness: 0.1 });
-                addBox(g, .015, .02, 1.2, 0, .02, -.5, metal);
-                addBox(g, .06, .06, .2, 0, .02, .1, darkMat);
-                addHands(g, .02, -.05, -.1, 0, -.02, -.1);
+                const wrap = new THREE.MeshStandardMaterial({ color: 0x14100c, metalness: .3, roughness: .8 });
+                const blade = addBox(g, .018, .05, 1.15, 0, .05, -.62, metal);
+                blade.rotation.x = -0.12;
+                addBox(g, .10, .012, .03, 0, .02, -.02, darkMat);
+                const hilt = addBox(g, .04, .04, .30, 0, -.02, .16, wrap);
+                hilt.rotation.x = 0.28;
+                addBox(g, .05, .05, .04, 0, -.075, .30, darkMat);
+                addHands(g, .02, -.06, .02, .02, -.02, .18);
+                g.rotation.set(0, 0, 0);
             } else if (kind === 'dismantle') {
                 const metal = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1.0, roughness: 0.0, emissive: 0x222222 });
                 addBox(g, .02, .15, .4, 0, .02, -.2, metal);
@@ -2253,7 +4098,7 @@
             } else if (kind === 'cleave') {
                 const skin = new THREE.MeshStandardMaterial({ color: 0x2a2320, roughness: .9 });
                 addBox(g, .12, .12, .15, 0, -.02, -.1, skin);
-                for(let i=0; i<4; i++) addBox(g, .03, .03, .15, -.045 + i*.03, .05, -.2, skin);
+                for (let i = 0; i < 4; i++) addBox(g, .03, .03, .15, -.045 + i * .03, .05, -.2, skin);
                 addHands(g, .02, -.05, -.1, 0, -.02, -.1);
             }
             g.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; o.frustumCulled = false; } });
@@ -2374,7 +4219,7 @@
                     else if (h.object.isMesh) { endPoint = h.point.clone(); if (h.object.userData?.destructible) window.damageMapMesh(h.object, h.point, w.damage || 24); break; }
                 }
                 this.game.effects.tracer(origin.clone().addScaledVector(dir, .4), endPoint, color);
-                if (!hitBot && this.game.isMultiplayer) {
+                if (!hitBot && this.game.isMultiplayer && !this.game.isCoop()) {
                     for (const id in this.game.network.players) {
                         if (id === this.game.network.myId) continue;
                         const pData = this.game.network.players[id];
@@ -2478,13 +4323,15 @@
                 this.fireTimer = rand(1.2, 2.2); this.hitFlash = 0; this.deathTimer = 0; this.walkPhase = 0; this.shootKick = 0;
                 this.tkFreezeTimer = 0; this.tkSlowTimer = 0;
                 this.stunned = false; this.stunTimer = 0;
-                this.weaponKind = options.weaponKind || pick(['rifle', 'rifle', 'rifle', 'shotgun', 'sniper', 'rocket', 'smg', 'lmg', 'ak47']);
+                this.weaponKind = options.weaponKind || pick(['rifle', 'rifle', 'shotgun', 'sniper', 'rocket', 'smg', 'lmg', 'ak47', 'kar98']);
+                this.weaponCamo = options.weaponCamo || pick(['default', 'crimson', 'cyber', 'emerald', 'royal', 'void']);
                 this.useBhop = Math.random() < 0.55;
                 this.useJumpPad = Math.random() < 0.6;
                 this.isAbyss = game.world.mapId === 'abyss';
                 this.isDummy = options.isDummy || false;
                 this.dummyType = options.dummyType || '';
                 this.toastedTimer = 0;
+                this.confusedTimer = 0;
                 this.mesh = this._build(); game.scene.add(this.mesh);
                 this.hitboxes = []; this._buildHitboxes();
             }
@@ -2505,14 +4352,21 @@
                 const aL = new THREE.Mesh(new THREE.BoxGeometry(.14, .55, .16), skin); aL.position.y = -.27; this.armL.add(aL); g.add(this.armL);
                 this.armR = new THREE.Group(); this.armR.position.set(.36, 1.4, 0);
                 const aR = new THREE.Mesh(new THREE.BoxGeometry(.14, .55, .16), skin); aR.position.y = -.27; this.armR.add(aR); g.add(this.armR);
-                this.gunMesh = new THREE.Mesh(new THREE.BoxGeometry(.08, .1, .6), dark); this.gunMesh.position.set(.2, 1.1, -.35); g.add(this.gunMesh);
+                this.gunMesh = buildWeaponMesh(this.weaponKind, this.weaponCamo);
+                this.gunMesh.scale.set(0.8, 0.8, 0.8);
+                this.gunMesh.position.set(.2, 1.1, -.35);
+                g.add(this.gunMesh);
+                this.hpBarBg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x220000, depthTest: false, depthWrite: false }));
+                this.hpBarBg.scale.set(1.1, 0.13, 1); this.hpBarBg.position.set(0, 2.35, 0); g.add(this.hpBarBg);
+                this.hpBarFill = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0xff3b3b, depthTest: false, depthWrite: false }));
+                this.hpBarFill.scale.set(1.0, 0.09, 1); this.hpBarFill.position.set(0, 2.35, 0.01); g.add(this.hpBarFill);
                 this.torso = torso; this.head = head;
                 this.legLMesh = lgL; this.legRMesh = lgR;
                 if (this.isDummy && this.dummyType) {
                     const canvas = document.createElement('canvas');
                     canvas.width = 256; canvas.height = 64;
                     const ctx = canvas.getContext('2d');
-                    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0,0,256,64);
+                    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, 256, 64);
                     ctx.font = 'bold 28px Arial'; ctx.fillStyle = '#ff7a1a';
                     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                     ctx.fillText(this.dummyType, 128, 32);
@@ -2557,6 +4411,14 @@
                     this.legLMesh.material.color.setHex(0x0a0e14);
                     this.legRMesh.material.color.setHex(0x0a0e14);
                 }
+                if (this.hpBarFill) {
+                    const frac = this.maxHealth > 0 ? clamp(this.health / this.maxHealth, 0, 1) : 0;
+                    const show = this.health < this.maxHealth && this.maxHealth < 100000;
+                    this.hpBarBg.visible = show; this.hpBarFill.visible = show;
+                    this.hpBarFill.scale.x = 1.0 * frac;
+                    this.hpBarFill.position.x = -(1 - frac) * 0.5;
+                }
+                if (this.confusedTimer > 0) this.confusedTimer -= dt;
                 if (this.isDummy) { this.mesh.position.set(this.pos.x, this.pos.y, this.pos.z); return; }
                 if (this.stunned || this.stunTimer > 0) {
                     if (this.stunTimer > 0) this.stunTimer -= dt;
@@ -2589,6 +4451,10 @@
                 if (dist > 8) { wishX = toPlayer.x; wishZ = toPlayer.z; }
                 else if (dist < 4) { wishX = -toPlayer.x; wishZ = -toPlayer.z; }
                 else { wishX = -toPlayer.z * .7; wishZ = toPlayer.x * .7; }
+                if (this.confusedTimer > 0) {
+                    const t = performance.now() * 0.006;
+                    wishX += Math.sin(t) * 1.2; wishZ += Math.cos(t * 1.3) * 1.2;
+                }
                 for (const b of this.game.bots) { if (b === this || !b.alive || b.isDummy) continue; const d = this.pos.distanceTo(b.pos); if (d < 1.2) { const push = this.pos.clone().sub(b.pos).normalize(); wishX += push.x * 1.5; wishZ += push.z * 1.5; } }
                 if (this.useJumpPad && dist > 8) {
                     let nearestPad = null, nearestD = 999;
@@ -2644,17 +4510,18 @@
                 const flashPos = this.pos.clone().add(new THREE.Vector3(0, 1.3, 0));
                 this.game.effects.botMuzzleFlash(flashPos, this.yaw);
                 const target = player.pos.clone().add(new THREE.Vector3(0, 1.2, 0));
-                let accuracy = 0.25;
-                if (this.game.wave <= 3) accuracy = 0.05;
-                else if (this.game.wave <= 6) accuracy = 0.15;
-                else accuracy = 0.3;
-                if (this.weaponKind === 'shotgun') { const hc = clamp(.85 - dist / 22, .15, .85) * (accuracy * 3); this.game.effects.tracer(flashPos, target, 0xff4444); if (Math.random() < hc) player.onHit(rand(8, 14), false, this.pos); }
-                else if (this.weaponKind === 'sniper') { this.game.effects.tracer(flashPos, target, 0xff4444); if (Math.random() < accuracy) player.onHit(rand(28, 42), false, this.pos); }
+                let accuracy = 0.25 * (this.confusedTimer > 0 ? 0.4 : 1);
+                if (this.game.wave <= 3) accuracy = 0.05 * (this.confusedTimer > 0 ? 0.4 : 1);
+                else if (this.game.wave <= 6) accuracy = 0.15 * (this.confusedTimer > 0 ? 0.4 : 1);
+                const playerParrying = (player.parryTimer > 0) && player.currentWeapon && player.currentWeapon.kind === 'katana';
+                const reflect = () => { this.takeDamage(rand(8, 14), 'body', player); this.game.effects.katanaParry(player.pos.clone().add(new THREE.Vector3(0, 1.2, 0))); this.game.ui.showCenterMsg('PARRY!', 'DEFLECTED', 700); };
+                if (this.weaponKind === 'shotgun') { const hc = clamp(.85 - dist / 22, .15, .85) * (accuracy * 3); this.game.effects.tracer(flashPos, target, 0xff4444); if (Math.random() < hc) { playerParrying ? reflect() : player.onHit(rand(8, 14), false, this.pos); } }
+                else if (this.weaponKind === 'sniper') { this.game.effects.tracer(flashPos, target, 0xff4444); if (Math.random() < accuracy) { playerParrying ? reflect() : player.onHit(rand(28, 42), false, this.pos); } }
                 else if (this.weaponKind === 'rocket') {
                     const predPos = player.pos.clone();
                     setTimeout(() => { this.game.effects.explosion(predPos, 4); audio.explosion(predPos); if (this.game.player.alive && this.game.player.pos.distanceTo(predPos) < 4) this.game.player.onHit(rand(8, 16), false, predPos); }, 400);
                     this.game.effects.tracer(flashPos, target, 0xff4444);
-                } else { if (Math.random() < accuracy) player.onHit(rand(5, 10), false, this.pos); this.game.effects.tracer(flashPos, target, 0xff4444); }
+                } else { if (Math.random() < accuracy) { playerParrying ? reflect() : player.onHit(rand(5, 10), false, this.pos); } this.game.effects.tracer(flashPos, target, 0xff4444); }
             }
             _moveAxis(axis, amount) {
                 if (Math.abs(amount) < 1e-6) return false;
@@ -2757,6 +4624,35 @@
                 setTimeout(() => el.remove(), 750);
             }
             hitmarker(head) { const el = this.game.ui.hitmarker; el.classList.remove('show'); void el.offsetWidth; el.classList.toggle('head', head); el.classList.add('show'); }
+            katanaParry(pos) {
+                audio.perfect();
+                const ring = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.05, 8, 28),
+                    new THREE.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false }));
+                ring.position.copy(pos); ring.rotation.x = Math.PI / 2;
+                this.game.scene.add(ring);
+                let t = 0;
+                const anim = () => {
+                    t += 0.07; ring.scale.setScalar(1 + t * 2.2); ring.material.opacity = 1 - t;
+                    if (t < 1) requestAnimationFrame(anim);
+                    else { this.game.scene.remove(ring); ring.geometry.dispose(); ring.material.dispose(); }
+                };
+                anim();
+                for (let i = 0; i < 10; i++) {
+                    const s = new THREE.Mesh(new THREE.SphereGeometry(0.03, 4, 4),
+                        new THREE.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true }));
+                    s.position.copy(pos); this.game.scene.add(s);
+                    this.impacts.push({ mesh: s, vel: new THREE.Vector3(rand(-5, 5), rand(-3, 5), rand(-5, 5)), life: 0.5, maxLife: 0.5, geo: s.geometry, mat: s.material, gravity: 4 });
+                }
+            }
+            redSlash(pos) {
+                const g = new THREE.Group();
+                const glow = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.18), new THREE.MeshBasicMaterial({ color: 0xff1010, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+                const core = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 0.07), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 1, depthWrite: false, side: THREE.DoubleSide }));
+                core.position.z = 0.01; g.add(glow); g.add(core);
+                g.position.copy(pos); g.rotation.set(rand(-1, 1), rand(-1, 1), rand(-1, 1));
+                this.game.scene.add(g);
+                this.impacts.push({ mesh: g, vel: new THREE.Vector3(0, 0, 0), life: 0.5, maxLife: 0.5, geo: glow.geometry, mat: glow.material, gravity: 0 });
+            }
             update(dt) {
                 if (this.muzzleTimer > 0) { this.muzzleTimer -= dt; if (this.muzzleTimer <= 0) this.muzzleLight.intensity = 0; }
                 for (let i = this.tracers.length - 1; i >= 0; i--) { const t = this.tracers[i]; t.life -= dt; t.mesh.material.opacity = (t.life / t.maxLife) * .9; if (t.life <= 0) { this.game.scene.remove(t.mesh); t.mesh.geometry.dispose(); t.mesh.material.dispose(); this.tracers.splice(i, 1); } }
@@ -2794,7 +4690,7 @@
             spawnPickup() {
                 if (!this.game.isHost()) return;
                 this.pickupPos = this._findSafePickupPos();
-                this.pickupType = Math.random() < .25 ? 'sukuna' : (Math.random() < .5 ? 'teleport' : (Math.random() < .5 ? 'telekinesis' : (Math.random() < .5 ? 'tracker' : 'lightning')));
+                this.pickupType = Math.random() < .12 ? 'sukuna' : (Math.random() < .5 ? 'teleport' : (Math.random() < .5 ? 'telekinesis' : (Math.random() < .5 ? 'tracker' : 'lightning')));
                 this.game.network.broadcast({ type: 'POWERUP_SPAWN', pos: [this.pickupPos.x, this.pickupPos.y, this.pickupPos.z], pType: this.pickupType });
                 this.spawnPickupAt([this.pickupPos.x, this.pickupPos.y, this.pickupPos.z], this.pickupType);
             }
@@ -2872,7 +4768,7 @@
                 let best = null, bestDist = 999;
                 let isPlayer = false;
                 for (const b of this.game.bots) { if (!b.alive) continue; const toB = b.pos.clone().add(new THREE.Vector3(0, 1, 0)).sub(origin); const d = toB.length(); if (d > 30) continue; toB.normalize(); if (toB.dot(dir) > .85 && d < bestDist) { best = b; bestDist = d; isPlayer = false; } }
-                if (this.game.isMultiplayer) {
+                if (this.game.isMultiplayer && !this.game.isCoop()) {
                     for (const id in this.game.network.players) {
                         if (id === this.game.network.myId) continue;
                         const pData = this.game.network.players[id];
@@ -2920,7 +4816,7 @@
                 let nearbyBot = null;
                 for (const b of this.game.bots) { if (b.alive && b.pos.distanceTo(player.pos) < 3.5) { nearbyBot = b; break; } }
                 if (nearbyBot && nearbyBot.health <= 30) { this.game.triggerFinisher(nearbyBot, false); nearbyBot.takeDamage(999, 'body', player); }
-                if (this.game.isMultiplayer) {
+                if (this.game.isMultiplayer && !this.game.isCoop()) {
                     for (const id in this.game.network.players) {
                         if (id === this.game.network.myId) continue;
                         const pData = this.game.network.players[id];
@@ -2981,7 +4877,7 @@
                 let best = null, bestDist = 999;
                 let isPlayer = false;
                 for (const b of this.game.bots) { if (!b.alive) continue; const toB = b.pos.clone().add(new THREE.Vector3(0, 1, 0)).sub(origin); const d = toB.length(); if (d > 25) continue; toB.normalize(); if (toB.dot(dir) > .85 && d < bestDist) { best = b; bestDist = d; isPlayer = false; } }
-                if (this.game.isMultiplayer) {
+                if (this.game.isMultiplayer && !this.game.isCoop()) {
                     for (const id in this.game.network.players) {
                         if (id === this.game.network.myId) continue;
                         const pData = this.game.network.players[id];
@@ -3040,10 +4936,16 @@
                 this.game.effects.teleportBurst(this.pos, 0xffffff);
                 this.game.showFlash(1.0, 200);
                 if (this.game.isMultiplayer) this.game.network.broadcast({ type: 'FLASH', pos: [this.pos.x, this.pos.y, this.pos.z] });
+                // Confusion to nearby bots
+                for (const b of this.game.bots) {
+                    if (!b.alive) continue;
+                    if (b.pos.distanceTo(this.pos) < 15) b.confusedTimer = 3.0;
+                }
+                // Local player flash
                 if (this.game.player.pos.distanceTo(this.pos) < 15) {
                     const toFlash = this.pos.clone().sub(this.game.camera.position).normalize();
-                    const forward = new THREE.Vector3(0,0,-1).applyQuaternion(this.game.camera.quaternion);
-                    if (toFlash.dot(forward) > 0.5) this.game.ui.flashbang();
+                    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.game.camera.quaternion);
+                    if (toFlash.dot(forward) > 0.5) { this.game.ui.flashbang(); this.game.player.confusedTimer = 2.0; }
                 }
             }
         }
@@ -3051,7 +4953,7 @@
         class MedkitDrop {
             constructor(game, pos) {
                 this.game = game; this.pos = pos.clone(); this.pos.y += 1.0;
-                this.vel = new THREE.Vector3(rand(-2,2), rand(2,5), rand(-2,2));
+                this.vel = new THREE.Vector3(rand(-2, 2), rand(2, 5), rand(-2, 2));
                 const g = new THREE.Group();
                 const box = new THREE.Mesh(new THREE.BoxGeometry(.35, .35, .35), new THREE.MeshStandardMaterial({ color: 0x0a2a15, emissive: 0x3fe08a, emissiveIntensity: 2.5, metalness: .5, roughness: .3 }));
                 g.add(box);
@@ -3069,7 +4971,7 @@
                 this.vel.y -= GRAVITY * dt;
                 this.pos.addScaledVector(this.vel, dt);
                 const groundY = this.game.world.groundAt(this.pos.x, this.pos.z);
-                if (groundY !== null && this.pos.y < groundY + 0.3) { this.pos.y = groundY + 0.3; this.vel.set(0,0,0); }
+                if (groundY !== null && this.pos.y < groundY + 0.3) { this.pos.y = groundY + 0.3; this.vel.set(0, 0, 0); }
                 this.mesh.rotation.y += dt * 2;
                 this.mesh.position.copy(this.pos);
                 return true;
@@ -3103,7 +5005,7 @@
             }
             showReloadBar(on, pct) { this.reloadBar.classList.toggle('on', on); this.reloadFill.style.width = (pct * 100) + '%'; }
             flashDamage() { this.vignette.style.opacity = '1'; clearTimeout(this._vigT); this._vigT = setTimeout(() => { this.vignette.style.opacity = '0'; }, 180); }
-            updateHealth(h) { this.healthFill.style.width = Math.max(0, h) + '%'; this.healthFill.style.background = h > 55 ? 'linear-gradient(90deg,#3fe08a,#8effc4)' : h > 25 ? 'linear-gradient(90deg,#ffb020,#ffd070)' : 'linear-gradient(90deg,#ff3b3b,#ff6a6a)'; this.healthNum.textContent = Math.ceil(h); }
+            updateHealth(h) { this.healthFill.style.width = Math.max(0, h) + '%'; this.healthFill.style.background = h > 55 ? 'linear-gradient(90deg,#3fe08a,#8effc4)' : h > 25 ? 'linear-gradient(90deg,#ffb020,#ffd070)' : 'linear-gradient(90deg,#ff3b3b,#ff6a6a)'; this.healthNum.textContent = Math.ceil(h); const chip = document.getElementById('healthChip'); if (chip) chip.textContent = Math.ceil(h) + ' HP'; }
             updateCrosshair(bloom) { this.crosshair.style.setProperty('--bloom', bloom + 'px'); }
             addKillFeed(name, head) { const el = document.createElement('div'); el.className = 'kf' + (head ? ' head' : ''); el.textContent = name; this.killfeed.appendChild(el); setTimeout(() => el.remove(), 3200); while (this.killfeed.children.length > 5) this.killfeed.firstChild.remove(); }
             showKillSkull() { this.killSkull.classList.remove('pop'); void this.killSkull.offsetWidth; this.killSkull.classList.add('pop'); }
@@ -3204,7 +5106,7 @@
             const canvas = document.createElement('canvas');
             canvas.width = 256; canvas.height = 64;
             const ctx = canvas.getContext('2d');
-            ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0,0,256,64);
+            ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, 256, 64);
             ctx.font = 'bold 32px Arial'; ctx.fillStyle = '#fff';
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillText(name, 128, 32);
@@ -3248,6 +5150,11 @@
                 this._remoteDeathState = {};
                 this.finisherTimer = 0; this.finisherTarget = null; this.finisherDashVel = new THREE.Vector3();
                 this.domainTimer = 0;
+                this.domainActive = false;
+                this.domainSavedBg = null; this.domainSavedFog = null;
+                this.domainShrine = null; this.domainShrineMeshes = []; this.domainShrineColliders = [];
+                this.domainReturnPos = null;
+                this.clash = null; this._clashKeyHandler = null;
                 this.ui.$('menuPoints').textContent = this.points;
                 this.ui.$('menuName').textContent = SaveSystem.data.playerName;
                 this._bindMenu(); this._bindPointerLock();
@@ -3259,6 +5166,8 @@
                 requestAnimationFrame(this._loop);
             }
             isHost() { return this.isMultiplayer ? this.network.isHost : true; }
+            isCoop() { return this.isMultiplayer && (this.mode === 'COOP_WAVE' || this.mode === 'COOP'); }
+            isPVP() { return this.isMultiplayer && this.mode === 'PVP'; }
             _saveProgress() { SaveSystem.data.points = this.points; SaveSystem.save(); document.getElementById('menuPoints').textContent = this.points; }
             _joinServer(code) { this.isMultiplayer = true; this.network.join(code); }
             _bindMenu() {
@@ -3337,6 +5246,25 @@
                 $('setSens').value = this.input.sensitivity; $('setSensVal').textContent = parseFloat(this.input.sensitivity).toFixed(2);
                 $('setScopeSens').value = SaveSystem.data.settings.scopeSensitivity; $('setScopeSensVal').textContent = parseFloat(SaveSystem.data.settings.scopeSensitivity).toFixed(2);
                 $('setInv').checked = this.input.invertY;
+                // Skin picker
+                let skinWrap = document.getElementById('skinPick');
+                if (!skinWrap) { skinWrap = document.createElement('div'); skinWrap.id = 'skinPick'; const grid = document.querySelector('#settingsPanel .settingsGrid'); grid.parentElement.insertBefore(skinWrap, grid.nextSibling); }
+                skinWrap.innerHTML = '<div style="font-size:11px;letter-spacing:3px;color:#5f6f82;margin:14px 0 6px">PLAYER SKIN</div>';
+                const sg = document.createElement('div'); sg.className = 'skinGrid';
+                for (const id in SKINS) {
+                    const s = SKINS[id]; const c = document.createElement('div');
+                    c.className = 'skinCard' + (SaveSystem.data.selectedSkin === id ? ' sel' : '');
+                    c.innerHTML = `<div class="swatch" style="background:${s.skin};box-shadow:inset 0 0 0 3px ${s.accent}"></div><div class="nm">${s.name}</div>`;
+                    c.addEventListener('click', () => {
+                        SaveSystem.data.selectedSkin = id;
+                        SaveSystem.data.settings.skinColor = s.skin;
+                        SaveSystem.data.settings.uiColor = s.accent;
+                        document.documentElement.style.setProperty('--accent', s.accent);
+                        SaveSystem.save(); audio.ui(); this._openSettings();
+                    });
+                    sg.appendChild(c);
+                }
+                skinWrap.appendChild(sg);
             }
             _applySettings() {
                 const $ = id => document.getElementById(id);
@@ -3352,6 +5280,7 @@
                 SaveSystem.data.settings.fov = this.baseFov; SaveSystem.data.settings.sensitivity = this.input.sensitivity;
                 SaveSystem.data.settings.scopeSensitivity = parseFloat($('setScopeSens').value);
                 SaveSystem.data.settings.invertY = this.input.invertY;
+                SaveSystem.data.selectedSkin = SaveSystem.data.selectedSkin || 'operator';
                 SaveSystem.save();
                 this.ui.$('menuName').textContent = SaveSystem.data.playerName;
                 document.documentElement.style.setProperty('--accent', SaveSystem.data.settings.uiColor);
@@ -3387,33 +5316,57 @@
                 const panel = document.getElementById('shopPanel'); panel.classList.remove('hidden');
                 const grid = document.getElementById('shopGrid');
                 document.getElementById('shopBalance').textContent = this.points;
-                const items = [];
-                for (const kind in WEAPON_DEFS) {
-                    if (WEAPON_DEFS[kind].price > 0 && !SaveSystem.data.unlockedWeapons.includes(kind)) items.push({ name: WEAPON_DEFS[kind].name, desc: 'Unlock this weapon for your loadout.', price: WEAPON_DEFS[kind].price, type: 'weapon', kind });
-                }
-                for (const camo in CAMO_NAMES) {
-                    if (camo === 'default') continue;
-                    const price = camo === 'dragon' ? 1000 : 300;
-                    for (const kind in WEAPON_DEFS) {
-                        const id = `${kind}:${camo}`;
-                        if (!SaveSystem.data.unlockedCamos.includes(id)) items.push({ name: `${CAMO_NAMES[camo]} (${kind})`, desc: CAMO_DESCS[camo], price, type: 'camo', kind, camo });
-                    }
-                }
+                const tabs = document.getElementById('shopTabs') || (() => {
+                    const t = document.createElement('div'); t.id = 'shopTabs'; t.className = 'shopTabs';
+                    t.innerHTML = '<button data-tab="weapons" class="active">WEAPONS</button><button data-tab="camos">CAMOS</button>';
+                    grid.parentElement.insertBefore(t, grid);
+                    t.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+                        t.querySelectorAll('button').forEach(x => x.classList.remove('active'));
+                        b.classList.add('active'); this._shopTab = b.dataset.tab; this._openShop();
+                    }));
+                    return t;
+                })();
+                const tab = this._shopTab || 'weapons';
+                tabs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
                 grid.innerHTML = '';
-                if (items.length === 0) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#7d8fa4">All items unlocked.</div>';
-                for (const it of items) {
-                    const card = document.createElement('div');
-                    card.className = 'shopCard';
-                    card.innerHTML = `<h3>${it.name}</h3><p>${it.desc}</p><div class="price">${it.price} PTS</div><button class="btn">BUY</button>`;
-                    card.querySelector('button').addEventListener('click', () => {
-                        if (this.points >= it.price) {
-                            this.points -= it.price;
-                            if (it.type === 'weapon') SaveSystem.data.unlockedWeapons.push(it.kind);
-                            else if (it.type === 'camo') SaveSystem.data.unlockedCamos.push(`${it.kind}:${it.camo}`);
-                            this._saveProgress(); audio.ui(); this._openShop();
-                        } else audio.empty();
-                    });
-                    grid.appendChild(card);
+                if (tab === 'weapons') {
+                    for (const kind in WEAPON_DEFS) {
+                        const def = WEAPON_DEFS[kind]; if (!def || def.price <= 0) continue;
+                        const owned = SaveSystem.data.unlockedWeapons.includes(kind);
+                        const kills = SaveSystem.data.challenges[kind] || 0;
+                        const need = WEAPON_CHALLENGES[kind] || 0;
+                        const card = document.createElement('div');
+                        card.className = 'shopCard' + (owned ? ' owned' : '');
+                        card.innerHTML = `<h3>${def.name}</h3><p>Unlock for your loadout.</p>
+                            <div class="price">${owned ? 'OWNED' : def.price + ' PTS'}</div>
+                            ${need ? `<div class="challenge">CHALLENGE: <b>${Math.min(kills, need)}/${need}</b> KILLS</div><div class="bar"><i style="width:${Math.min(100, kills / need * 100)}%"></i></div>` : ''}
+                            <button class="btn" ${owned ? 'disabled' : ''}>${owned ? 'OWNED' : 'BUY'}</button>`;
+                        card.querySelector('button').addEventListener('click', () => {
+                            if (owned) return;
+                            if (this.points >= def.price) { this.points -= def.price; SaveSystem.data.unlockedWeapons.push(kind); this._saveProgress(); audio.ui(); this._openShop(); }
+                            else audio.empty();
+                        });
+                        grid.appendChild(card);
+                    }
+                } else {
+                    for (const camo in CAMO_NAMES) {
+                        if (camo === 'default') continue;
+                        const price = camo === 'dragon' ? 1000 : 300;
+                        for (const kind in WEAPON_DEFS) {
+                            if (!WEAPON_DEFS[kind]) continue;
+                            const id = `${kind}:${camo}`;
+                            const owned = SaveSystem.data.unlockedCamos.includes(id);
+                            const card = document.createElement('div');
+                            card.className = 'shopCard' + (owned ? ' owned' : '');
+                            card.innerHTML = `<h3>${CAMO_NAMES[camo]} <span style="font-size:10px;color:#6d7f94">${kind}</span></h3><p>${CAMO_DESCS[camo]}</p><div class="price">${owned ? 'OWNED' : price + ' PTS'}</div><button class="btn" ${owned ? 'disabled' : ''}>${owned ? 'OWNED' : 'BUY'}</button>`;
+                            card.querySelector('button').addEventListener('click', () => {
+                                if (owned) return;
+                                if (this.points >= price) { this.points -= price; SaveSystem.data.unlockedCamos.push(id); this._saveProgress(); audio.ui(); this._openShop(); }
+                                else audio.empty();
+                            });
+                            grid.appendChild(card);
+                        }
+                    }
                 }
             }
             _startGame(mode, map, isNetGame = false) {
@@ -3424,7 +5377,7 @@
                     this.perfectFreeze = 0; this.pendingLaunchVel = 0; this.impactFreeze = 0;
                     this._wasCinematic = false;
                     this.finisherTimer = 0; this.finisherTarget = null;
-                    this.domainTimer = 0;
+                    this.domainTimer = 0; this.domainActive = false; this.clash = null;
                     document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
                     document.getElementById('menu').classList.add('hidden');
                     document.getElementById('waitingLobby').classList.remove('show');
@@ -3482,6 +5435,11 @@
                 this.abilitySystem = new AbilitySystem(this);
             }
             _teardown() {
+                this.domainActive = false; this.domainTimer = 0; this.domainShrine = null;
+                this.domainShrineMeshes = []; this.domainShrineColliders = [];
+                this.domainSavedBg = null; this.domainSavedFog = null;
+                if (this.clash && this._clashKeyHandler) { removeEventListener('keydown', this._clashKeyHandler); this._clashKeyHandler = null; this.clash = null; }
+                const co = document.getElementById('clashOverlay'); if (co) co.classList.remove('show');
                 if (this.bots) { this.bots.forEach(b => b.dispose()); this.bots = []; }
                 for (const id in this.remoteMeshes) this.scene.remove(this.remoteMeshes[id]);
                 this.remoteMeshes = {};
@@ -3514,7 +5472,7 @@
                 }
             }
             _spawnWave() {
-                if (this.isMultiplayer && this.mode !== 'COOP_WAVE') return;
+                if (this.isMultiplayer && this.mode !== 'COOP_WAVE' && this.mode !== 'COOP') return;
                 const count = 3 + this.wave * 2;
                 for (let i = 0; i < count; i++) {
                     const spawn = this.world.botSpawns[Math.floor(Math.random() * this.world.botSpawns.length)].clone();
@@ -3529,13 +5487,67 @@
             }
             spawnMedkitDrop(pos) { if (this.medkitDrops.length >= 8) return; this.medkitDrops.push(new MedkitDrop(this, pos)); }
             throwFlashbang() { if (this.flashbangs.length >= 2) return; const cam = this.camera; const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion); this.flashbangs.push(new Flashbang(this, cam.position.clone(), dir)); audio.throw(); }
+            _shrineTop() { return new THREE.Vector3(0, 20 + 0.5, 0); }
+            _buildDomainShrine() {
+                const g = new THREE.Group();
+                const red = new THREE.MeshStandardMaterial({ color: 0x1a0000, emissive: 0xff1010, emissiveIntensity: 2.2, metalness: .6, roughness: .3 });
+                const black = new THREE.MeshStandardMaterial({ color: 0x050000, metalness: .85, roughness: .25 });
+                const bone = new THREE.MeshStandardMaterial({ color: 0xf0e0e0, emissive: 0x330000, emissiveIntensity: .4, roughness: .75 });
+                const S = 14, Y = 20;
+                const addShrineBox = (w, h, d, x, y, z, mat, collide = true) => {
+                    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+                    m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; g.add(m); this.domainShrineMeshes.push(m);
+                    if (collide) { const b = new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(x, y, z), new THREE.Vector3(w, h, d)); this.world.colliders.push(b); this.domainShrineColliders.push(b); this.world.meshes.push(m); }
+                    return m;
+                };
+                addShrineBox(S, 1, S, 0, Y, 0, black);
+                for (const [x, z] of [[-5, -5], [5, -5], [-5, 5], [5, 5]]) addShrineBox(1, 12, 1, x, Y + 6.5, z, red);
+                addShrineBox(S + 2, 1, S + 2, 0, Y + 13, 0, black);
+                addShrineBox(2, 3, 2, 0, Y + 11, 0, red);
+                addShrineBox(8, 0.6, 0.6, 0, Y + 4, -5, bone);
+                addShrineBox(8, 0.6, 0.6, 0, Y + 4, 5, bone);
+                addShrineBox(0.8, 0.8, 2, -5, Y + 4, 0, bone);
+                addShrineBox(0.8, 0.8, 2, 5, Y + 4, 0, bone);
+                const light = new THREE.PointLight(0xff2020, 30, 40, 2); light.position.set(0, Y + 8, 0); g.add(light);
+                this.scene.add(g); this.domainShrine = g;
+            }
+            endDomain() {
+                if (!this.domainActive) return;
+                this.domainActive = false; this.domainTimer = 0;
+                if (this.domainSavedBg) { this.scene.background = this.domainSavedBg; this.scene.fog = this.domainSavedFog; this.domainSavedBg = null; }
+                if (this.domainShrine) {
+                    this.scene.remove(this.domainShrine);
+                    this.domainShrine.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) { if (Array.isArray(o.material)) o.material.forEach(m => m.dispose()); else o.material.dispose(); } });
+                    this.domainShrine = null;
+                }
+                this.domainShrineMeshes.forEach(m => { const i = this.world.meshes.indexOf(m); if (i >= 0) this.world.meshes.splice(i, 1); });
+                this.domainShrineColliders.forEach(b => { const i = this.world.colliders.indexOf(b); if (i >= 0) this.world.colliders.splice(i, 1); });
+                this.domainShrineMeshes = []; this.domainShrineColliders = [];
+                if (this.player && this.player.alive) {
+                    const sp = this.world.getSafeSpawnPoint(this.network);
+                    this.player.pos.copy(sp); this.player.vel.set(0, 0, 0); this.player._resetViewState();
+                }
+                this.domainReturnPos = null;
+                if (this.isMultiplayer && this.network.isHost) this.network.broadcast({ type: 'DOMAIN_END' });
+            }
             triggerDomainExpansion(isLocal) {
-                this.domainTimer = 5.0;
+                if (this.domainActive) return;
+                this.domainActive = true;
+                this.domainTimer = 6.0;
                 audio.domain();
                 this.cameraShake(0.8);
                 if (isLocal) this.showFlash(0.5, 500);
+                if (!this.domainSavedBg) { this.domainSavedBg = this.scene.background; this.domainSavedFog = this.scene.fog; }
+                this.scene.background = new THREE.Color(0x2a0000);
+                this.scene.fog = new THREE.FogExp2(0x2a0000, 0.012);
+                this._buildDomainShrine();
+                this.domainReturnPos = this.player.pos.clone();
+                const top = this._shrineTop();
+                this.player.pos.set(top.x, top.y + 1, top.z); this.player.vel.set(0, 0, 0);
+                this.player._resetViewState();
+                if (this.isMultiplayer) this.network.broadcast({ type: 'DOMAIN_TELEPORT', pos: [top.x, top.y + 1, top.z] });
                 for (const b of this.bots) { if (b.alive) { b.takeDamage(30, 'body', this.player); this.effects.damageNumber(b.getDamageNumberPos('body'), 30, false); } }
-                if (this.isMultiplayer) {
+                if (this.isMultiplayer && !this.isCoop()) {
                     for (const id in this.network.players) {
                         if (id === this.network.myId) continue;
                         const pData = this.network.players[id];
@@ -3544,20 +5556,85 @@
                 }
                 const spawnSlash = () => {
                     if (this.domainTimer <= 0) return;
-                    const px = this.player.pos.x + rand(-30, 30);
-                    const pz = this.player.pos.z + rand(-30, 30);
+                    const px = this.player.pos.x + rand(-26, 26);
+                    const pz = this.player.pos.z + rand(-26, 26);
                     const py = this.world.groundAt(px, pz) || this.player.pos.y;
-                    const geo = new THREE.PlaneGeometry(2, 10);
-                    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
-                    const mesh = new THREE.Mesh(geo, mat);
-                    mesh.position.set(px, py + 2, pz);
-                    mesh.rotation.set(rand(-1,1), rand(-1,1), rand(-1,1));
-                    this.scene.add(mesh);
-                    this.effects.impacts.push({ mesh, vel: new THREE.Vector3(0,0,0), life: 0.5, maxLife: 0.5, geo, mat, gravity: 0 });
-                    audio.shoot('dismantle', mesh.position);
-                    setTimeout(spawnSlash, 50);
+                    this.effects.redSlash(new THREE.Vector3(px, py + rand(1, 4), pz));
+                    audio.shoot('dismantle', new THREE.Vector3(px, py, pz));
+                    setTimeout(spawnSlash, 55);
                 };
                 spawnSlash();
+            }
+            startDomainClash(oppId) {
+                this.beginClash(oppId, 6);
+                this.network.broadcast({ type: 'CLASH_START', oppId, initiatorId: this.network.myId, duration: 6 });
+            }
+            beginClash(oppId, duration) {
+                if (this.clash && this.clash.active) return;
+                this.clash = { active: true, oppId, myScore: 0, oppScore: 0, timeLeft: duration || 6, target: 40, resolved: false };
+                const ov = this._clashOverlay();
+                ov.classList.add('show');
+                const tEl = document.getElementById('clashTimer');
+                if (tEl) tEl.textContent = (duration || 6).toFixed(1) + 's';
+                this._clashKeyHandler = (e) => {
+                    if (!this.clash || !this.clash.active) return;
+                    if (e.code === 'Space') {
+                        e.preventDefault();
+                        this.clash.myScore = Math.min(this.clash.target, this.clash.myScore + 1);
+                        const frac = this.clash.myScore / this.clash.target;
+                        document.getElementById('clashMine').style.width = (frac * 100) + '%';
+                        this.network.broadcast({ type: 'CLASH_SCORE', id: this.network.myId, score: this.clash.myScore });
+                    }
+                };
+                addEventListener('keydown', this._clashKeyHandler);
+            }
+            _clashOverlay() {
+                let ov = document.getElementById('clashOverlay');
+                if (!ov) {
+                    ov = document.createElement('div'); ov.id = 'clashOverlay';
+                    ov.innerHTML = `<div class="cl-title">DOMAIN CLASH</div><div class="cl-sub">MALEVOLENT SHRINE</div>
+                        <div class="cl-bars">
+                            <div class="cl-side"><div class="cl-name" id="clashMe">YOU</div><div class="cl-meter"><i id="clashMine"></i></div></div>
+                            <div class="cl-side"><div class="cl-name" id="clashOpp">OPPONENT</div><div class="cl-meter"><i id="clashOpp"></i></div></div>
+                        </div>
+                        <div class="cl-key">SPACE</div><div class="cl-timer" id="clashTimer">6.0s</div>`;
+                    document.body.appendChild(ov);
+                }
+                return ov;
+            }
+            updateClash(dt) {
+                if (!this.clash || !this.clash.active) return;
+                this.clash.timeLeft -= dt;
+                const ov = document.getElementById('clashTimer');
+                if (ov) ov.textContent = Math.max(0, this.clash.timeLeft).toFixed(1) + 's';
+                document.getElementById('clashOpp').style.width = Math.min(100, (this.clash.oppScore / this.clash.target) * 100) + '%';
+                if (this.clash.timeLeft <= 0 && !this.clash.resolved) {
+                    this.clash.resolved = true;
+                    let winner = null;
+                    if (this.clash.myScore > this.clash.oppScore) winner = this.network.myId;
+                    else if (this.clash.oppScore > this.clash.myScore) winner = this.clash.oppId;
+                    if (this.network.isHost) this.network.broadcast({ type: 'CLASH_RESULT', winnerId: winner });
+                    this.resolveClash(winner);
+                }
+            }
+            resolveClash(winnerId) {
+                if (!this.clash) return;
+                if (this._clashKeyHandler) removeEventListener('keydown', this._clashKeyHandler);
+                this._clashKeyHandler = null;
+                const ov = document.getElementById('clashOverlay'); if (ov) ov.classList.remove('show');
+                const mine = (winnerId === this.network.myId);
+                if (mine) {
+                    this.ui.showCenterMsg('DOMAIN ASSERTED', 'YOU WIN THE CLASH', 2500);
+                    this.triggerDomainExpansion(true);
+                    this.network.broadcast({ type: 'DOMAIN', playerId: this.network.myId });
+                } else if (winnerId) {
+                    this.ui.showCenterMsg('DOMAIN OVERWHELMED', 'YOU LOSE THE CLASH', 2500);
+                    if (this.player) { this.player.onHit(40, true, null); this.player.tkFreezeTimer = 1.0; }
+                } else {
+                    this.ui.showCenterMsg('CLASH DRAW', 'BOTH DOMAINS SHATTER', 2500);
+                    if (this.player) this.player.onHit(25, true, null);
+                }
+                this.clash = null;
             }
             raycastTargets() {
                 const list = [...this.world.meshes];
@@ -3570,6 +5647,16 @@
                 this._saveProgress();
                 this.ui.addKillFeed(`YOU ${part === 'head' ? '⌖ HEADSHOT' : '✕'} HOSTILE`, part === 'head');
                 this.ui.showKillSkull(); audio.kill();
+                const w = this.player && this.player.currentWeapon;
+                if (w && WEAPON_CHALLENGES[w.kind] !== undefined) {
+                    SaveSystem.data.challenges[w.kind] = (SaveSystem.data.challenges[w.kind] || 0) + 1;
+                    if (SaveSystem.data.challenges[w.kind] >= WEAPON_CHALLENGES[w.kind] && !SaveSystem.data.unlockedWeapons.includes(w.kind)) {
+                        SaveSystem.data.unlockedWeapons.push(w.kind);
+                        this.ui.showCenterMsg('WEAPON UNLOCKED', w.name, 2200);
+                        audio.pickup();
+                    }
+                    SaveSystem.save();
+                }
             }
             onPlayerDied() {
                 this.lastDeathPos = this.player.pos.clone();
@@ -3692,7 +5779,11 @@
                     this.input.endFrame();
                     return;
                 }
-                if (this.domainTimer > 0) { this.domainTimer -= dt; this.cameraShake(0.1); }
+                if (this.domainTimer > 0) {
+                    this.domainTimer -= dt; this.cameraShake(0.1);
+                    if (this.domainTimer <= 0) this.endDomain();
+                }
+                if (this.clash && this.clash.active) this.updateClash(dt);
                 if (this.perfectFreeze > 0) {
                     this.perfectFreeze -= dt;
                     if (this.perfectFreeze <= 0 && this.pendingLaunchVel > 0) {
@@ -3806,7 +5897,7 @@
                 const adsBloom = w ? w.adsAmount : 0;
                 this.player.bloomPulse = damp(this.player.bloomPulse || 0, 0, 8, dt);
                 this.ui.updateCrosshair(Math.round(moveBloom + this.player.bloomPulse * 10 + (1 - adsBloom) * 2));
-                if ((this.mode === 'wave' || this.mode === 'COOP_WAVE') && !this.isMultiplayer) this._waveLogic(dt);
+                if (this.mode === 'wave' || this.mode === 'COOP_WAVE') this._waveLogic(dt);
                 let shake = this.shakeAmt + this.player._damageShake;
                 if (shake > 0) { this.camera.rotation.x += rand(-1, 1) * shake * .03; this.camera.rotation.y += rand(-1, 1) * shake * .03; this.shakeAmt = damp(this.shakeAmt, 0, 12, dt); this.player._damageShake = damp(this.player._damageShake, 0, 6, dt); }
                 this.ui.updateHealth(this.player.health);
@@ -3817,6 +5908,7 @@
                 if (this.player.perfectStack > 0 && this.player.perfectComboTimer > 0) buffs.push('PERFECT x' + this.player.perfectStack);
                 if (this.player.sukunaTimer > 0) buffs.push('SUKUNA ' + this.player.sukunaTimer.toFixed(1) + 's');
                 if (this.player.aimbotTimer > 0) buffs.push('AIMBOT ' + this.player.aimbotTimer.toFixed(1) + 's');
+                if (this.player.confusedTimer > 0) buffs.push('CONFUSED ' + this.player.confusedTimer.toFixed(1) + 's');
                 this.ui.updateBuffBar(buffs);
                 if (this.running && !this.paused && !this.input.locked) this.ui.clickHint.classList.add('show');
                 else this.ui.clickHint.classList.remove('show');
@@ -3863,7 +5955,7 @@
                     const bp = b.pos.clone().add(new THREE.Vector3(0, 1, 0)); const d = bp.distanceTo(pos);
                     if (d < (r.splashRadius || 5)) { const falloff = 1 - d / (r.splashRadius || 5); const dmg = (b === directHit ? r.damage : r.splashDamage) * falloff; b.takeDamage(dmg, 'body', this.player); this.effects.damageNumber(b.getDamageNumberPos('body'), dmg, false); }
                 }
-                if (this.isMultiplayer) {
+                if (this.isMultiplayer && !this.isCoop()) {
                     for (const id in this.network.players) {
                         if (id === this.network.myId) continue;
                         const pData = this.network.players[id];
@@ -3923,4 +6015,5 @@
         addEventListener('keydown', () => { audio.init(); if (!game.running) game.music.playMenu(); }, { once: true });
     </script>
 </body>
+
 </html>
