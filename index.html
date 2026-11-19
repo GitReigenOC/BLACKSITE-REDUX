@@ -2019,9 +2019,11 @@
         </div>
         <div class="footbar">
             <div>WASD MOVE · <b>SHIFT</b> SPRINT · <b>SPACE</b> TAP-JUMP · <b>C</b> SLIDE · <b>MOUSE</b> AIM/FIRE ·
-                <b>F</b> MEDKIT · <b>G</b> FLASHBANG</div>
+                <b>F</b> MEDKIT · <b>G</b> FLASHBANG
+            </div>
             <div><b>1-5</b> WEAPONS · <b>R</b> RELOAD · <b>E</b> ABILITY · <b>ESC</b> PAUSE · <b>TAB</b> SCOREBOARD ·
-                <b>V</b> SUKUNA</div>
+                <b>V</b> SUKUNA
+            </div>
         </div>
     </div>
 
@@ -2458,6 +2460,14 @@
         const audio = new AudioEngine();
 
         /* ===== SUKUNA VFX / MAP DESTRUCTION (DISMANTLE REWORK) ===== */
+
+        // Sharp crescent shape for slashes
+        const slashShape = new THREE.Shape();
+        slashShape.moveTo(-1, 0);
+        slashShape.quadraticCurveTo(0, 0.8, 1, 0);
+        slashShape.quadraticCurveTo(0, -0.2, -1, 0);
+        const slashGeo = new THREE.ShapeGeometry(slashShape);
+
         window.sukunaSlashVfx = function (position, type = 'dismantle') {
             if (type === 'cleave') {
                 // --- CLEAVE: unchanged original look ---
@@ -2483,7 +2493,7 @@
                 animate();
                 return;
             }
-            // --- DISMANTLE: upgraded VFX (richer than cleave) ---
+            // --- DISMANTLE: upgraded sharp VFX ---
             const group = new THREE.Group();
             const red = 0xff1a1a;
             const light = new THREE.PointLight(red, 10, 6, 2); group.add(light);
@@ -2494,11 +2504,11 @@
             const slashes = [];
             for (let i = 0; i < slashCount; i++) {
                 const s = new THREE.Group();
-                const glow = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.16),
-                    new THREE.MeshBasicMaterial({ color: red, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-                const blade = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 0.06),
-                    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 1, depthWrite: false, side: THREE.DoubleSide }));
+                const glow = new THREE.Mesh(slashGeo, new THREE.MeshBasicMaterial({ color: red, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+                glow.scale.set(1.2, 1.2, 1);
+                const blade = new THREE.Mesh(slashGeo, new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 1, depthWrite: false, side: THREE.DoubleSide }));
                 blade.position.z = 0.01;
+                blade.scale.set(1.0, 0.8, 1);
                 s.add(glow); s.add(blade);
                 s.rotation.z = (i / slashCount) * Math.PI + rand(-0.2, 0.2);
                 s.rotation.x = rand(-0.5, 0.5);
@@ -2581,7 +2591,7 @@
         };
 
         window.sukunaHandVfx = {
-            group: null, start: 0,
+            group: null, start: 0, swinging: false,
             spawn(camera) {
                 if (this.group) return;
                 const g = new THREE.Group();
@@ -2627,7 +2637,7 @@
                     if (!this.group) return;
                     const t = (performance.now() - this.start) / 1000;
                     this.group.children.forEach(c => {
-                        if (c.userData.isHand) { c.position.y = -0.3 + Math.sin(t * 2.4) * 0.04; c.rotation.y = -0.4 + Math.sin(t * 1.2) * 0.12; }
+                        if (c.userData.isHand && !this.swinging) { c.position.y = -0.3 + Math.sin(t * 2.4) * 0.04; c.rotation.y = -0.4 + Math.sin(t * 1.2) * 0.12; }
                         if (c.userData.isRing) { c.rotation.z = t * 1.4; c.scale.setScalar(1 + Math.sin(t * 3) * 0.08); }
                         if (c.userData.base) { c.position.x = c.userData.base.x + Math.sin(t * 2 + c.userData.phase) * 0.05; c.position.y = c.userData.base.y + Math.cos(t * 2.4 + c.userData.phase) * 0.05; }
                     });
@@ -2635,11 +2645,43 @@
                 };
                 loop();
             },
+            swing(type) {
+                if (!this.group || this.swinging) return;
+                const hand = this.group.children.find(c => c.userData.isHand);
+                if (!hand) return;
+                this.swinging = true;
+                const start = performance.now();
+                const dur = type === 'cleave' ? 400 : 250;
+                const origY = -0.3, origZ = -0.72;
+                const anim = () => {
+                    if (!this.group) return;
+                    const t = (performance.now() - start) / dur;
+                    if (t >= 1) {
+                        hand.position.z = origZ;
+                        hand.rotation.z = 0;
+                        hand.rotation.y = -0.4;
+                        this.swinging = false;
+                        return;
+                    }
+                    const ease = Math.sin(t * Math.PI);
+                    if (type === 'dismantle') {
+                        hand.position.z = origZ - ease * 0.5;
+                        hand.rotation.x = -ease * 0.5;
+                    } else {
+                        hand.position.z = origZ - ease * 0.3;
+                        hand.rotation.z = Math.sin(t * Math.PI * 2) * 1.5;
+                        hand.rotation.y = -0.4 - ease * 1.0;
+                    }
+                    requestAnimationFrame(anim);
+                };
+                anim();
+            },
             remove() {
                 if (!this.group) return;
                 this.group.parent?.remove(this.group);
                 this.group.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
                 this.group = null;
+                this.swinging = false;
             }
         };
 
@@ -3132,7 +3174,8 @@
                 for (const id in this.players) {
                     if (id === this.myId) continue;
                     const pData = this.players[id];
-                    if (!pData.state || !pData.state.pos) continue;
+                    // Guard against NaN poisoning
+                    if (!pData.state || !pData.state.pos || pData.state.pos.some(v => !Number.isFinite(v))) continue;
                     let mesh = this.game.remoteMeshes[id];
                     if (!mesh) {
                         mesh = buildRemoteAvatar(pData.name, pData.skinColor, pData.uiColor);
@@ -3737,7 +3780,6 @@
                 if (this.pos.y < this.world.killY) this.game.onPlayerFell();
             }
             _look(dt) {
-                this.yaw = this.yaw % (Math.PI * 2);
                 if (!Number.isFinite(this.yaw)) this.yaw = 0;
                 if (!Number.isFinite(this.pitch)) this.pitch = 0;
 
@@ -3762,7 +3804,8 @@
                         const targetPos = closest.pos.clone().add(new THREE.Vector3(0, 1.2, 0));
                         const dir = targetPos.sub(this.game.camera.position).normalize();
                         const targetYaw = Math.atan2(-dir.x, -dir.z);
-                        const targetPitch = Math.asin(dir.y);
+                        // CLAMP to prevent Math.asin returning NaN
+                        const targetPitch = Math.asin(clamp(dir.y, -1, 1));
                         this.yaw = lerp(this.yaw, targetYaw, 10 * dt);
                         this.pitch = lerp(this.pitch, targetPitch, 10 * dt);
                     }
@@ -3940,10 +3983,11 @@
                 if (weapon.boltTimer > 0) weapon.boltTimer -= dt;
             }
             performCleave() {
+                window.sukunaHandVfx.swing('cleave');
                 const cam = this.game.camera;
                 const origin = cam.position.clone();
                 const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-                const ray = new THREE.Raycaster(origin, dir, 0, 3.2);
+                const ray = new THREE.Raycaster(origin, dir, 0, 4.5);
                 let best = null, bestPoint = null;
                 for (const b of this.game.bots) {
                     if (!b.alive) continue;
@@ -3957,7 +4001,7 @@
                         if (!pData.state || !pData.state.alive) continue;
                         const tp = new THREE.Vector3(...pData.state.pos).add(new THREE.Vector3(0, 1, 0));
                         const close = tp.clone().sub(origin);
-                        if (close.length() < 3.2 && close.normalize().dot(dir) > 0.6) { best = { id, pos: tp, isPlayer: true }; bestPoint = tp; break; }
+                        if (close.length() < 4.5 && close.normalize().dot(dir) > 0.6) { best = { id, pos: tp, isPlayer: true }; bestPoint = tp; break; }
                     }
                 }
                 if (!best) {
@@ -3969,17 +4013,34 @@
                 audio.sukuna();
                 game.effects.sukunaSlash(bestPoint, 'cleave');
                 this.game.cameraShake(0.4);
-                this.game.ui.showCenterMsg('CLEAVE', '', 900);
+                this.game.ui.showCenterMsg('CLEAVE', 'GRABBED', 900);
                 const base = bestPoint.clone();
+
                 if (best.isPlayer) {
                     this.game.network.broadcast({ type: 'TK_FREEZE', targetId: best.id });
-                    this.game.network.broadcast({ type: 'HIT', targetId: best.id, damage: 999, attackerId: this.game.network.myId, attackerName: this.game.network.myName });
+                    setTimeout(() => {
+                        this.game.network.broadcast({ type: 'HIT', targetId: best.id, damage: 999, attackerId: this.game.network.myId, attackerName: this.game.network.myName });
+                    }, 800);
                 } else {
                     best.stunned = true;
-                    best.stunTimer = 1.6;
-                    if (best.vel && best.vel.set) best.vel.set(0, 0, 0);
-                    if (best.mesh) best.mesh.position.add(origin.clone().sub(best.mesh.position).multiplyScalar(0.15));
+                    best.stunTimer = 2.0; // Hold them for 2s
+                    best.vel.set(0, 0, 0);
+
+                    // Pull target to player
+                    const pullTarget = this.pos.clone().add(dir.clone().multiplyScalar(2.0));
+                    pullTarget.y = best.pos.y;
+                    best.pos.copy(pullTarget);
+
+                    setTimeout(() => {
+                        if (best.alive) {
+                            best.takeDamage(9999, 'body', this);
+                            best.vel.set(-dir.x * 20, 8, -dir.z * 20); // Throw away
+                            best.stunned = false;
+                            best.stunTimer = 0;
+                        }
+                    }, 800);
                 }
+
                 for (let i = 0; i < 12; i++) {
                     setTimeout(() => {
                         const p = base.clone().add(new THREE.Vector3(rand(-0.7, 0.7), rand(-0.7, 0.7), rand(-0.7, 0.7)));
@@ -4002,7 +4063,6 @@
                         else { game.scene.remove(sphere); sphereGeo.dispose(); sphereMat.dispose(); }
                     };
                     anim();
-                    if (!best.isPlayer && best.alive) best.takeDamage(9999, 'body', this);
                     game.effects.bloodExplosion(base);
                     audio.explosion(base);
                 }, 820);
@@ -4231,7 +4291,7 @@
                     player.onFireRecoil(WEAPON_DEFS[w.kind].recoil);
                     this.game.cameraShake(.06 * WEAPON_DEFS[w.kind].recoil);
                     audio.shoot(w.sound);
-                } else {
+                } else if (w.kind !== 'dismantle') {
                     player._swingAnim = 0.3;
                     player._swingVariant = randInt(0, 2);
                     audio.shoot(w.sound);
@@ -4239,7 +4299,10 @@
                 const spread = lerp(w.spreadHip, w.spreadAds, w.adsAmount);
                 player.bloomPulse = 1;
                 const tc = CAMO_COLORS[w.camo] || CAMO_COLORS['default'];
-                if (w.kind === 'dismantle') this.game.armory._fireDismantle(player, w);
+                if (w.kind === 'dismantle') {
+                    window.sukunaHandVfx.swing('dismantle');
+                    this.game.armory._fireDismantle(player, w);
+                }
                 else if (w.kind === 'shotgun') { for (let i = 0; i < (w.pellets || 1); i++) this._fireRay(player, w, spread * 1.4, tc); }
                 else if (w.kind === 'rocket') this._fireRocket(player, w, tc);
                 else if (w.melee) this._fireMelee(player, w);
@@ -4338,26 +4401,31 @@
                 this.life = 1.0;
                 this.damage = 50;
 
-                // Updated VFX: black core, red glow, white outline
-                const outlineGeo = new THREE.PlaneGeometry(1.3, 5.4);
-                const outlineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending });
-                const glowGeo = new THREE.PlaneGeometry(1.1, 5.0);
-                const glowMat = new THREE.MeshBasicMaterial({ color: 0xff2020, side: THREE.DoubleSide, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
-                const innerGeo = new THREE.PlaneGeometry(0.95, 4.6);
+                // Sharp curved slash visual
+                const shape = new THREE.Shape();
+                shape.moveTo(-1, 0);
+                shape.quadraticCurveTo(0, 0.8, 1, 0);
+                shape.quadraticCurveTo(0, -0.2, -1, 0);
+                const geo = new THREE.ShapeGeometry(shape);
+
+                const outerGeo = geo.clone(); outerGeo.scale(1.2, 1.3, 1);
+                const outlineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending });
+                const glowMat = new THREE.MeshBasicMaterial({ color: 0xff2020, side: THREE.DoubleSide, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending });
                 const innerMat = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide, transparent: true, opacity: 1 });
 
-                const outline = new THREE.Mesh(outlineGeo, outlineMat);
-                const glow = new THREE.Mesh(glowGeo, glowMat);
-                const inner = new THREE.Mesh(innerGeo, innerMat);
+                const outline = new THREE.Mesh(outerGeo, outlineMat);
+                const glow = new THREE.Mesh(geo, glowMat);
+                const inner = new THREE.Mesh(geo, innerMat);
+                inner.scale.set(0.8, 0.6, 1);
                 inner.position.z = 0.01;
                 glow.position.z = 0.005;
 
-                this.mesh = new THREE.Mesh(glowGeo, glowMat);
+                this.mesh = new THREE.Mesh(geo, glowMat);
                 this.mesh.add(outline);
                 this.mesh.add(inner);
                 this.mesh.position.copy(this.pos);
                 this.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), this.dir);
-                this.mesh.rotateZ(Math.PI / 4);
+                this.mesh.rotateZ(Math.PI / 2); // Orient crescent vertically
                 game.scene.add(this.mesh);
             }
             update(dt) {
@@ -4517,6 +4585,7 @@
                     if (this.stunTimer > 0) this.stunTimer -= dt;
                     if (this.stunTimer <= 0) this.stunned = false;
                     this.mesh.position.set(this.pos.x, this.pos.y, this.pos.z);
+                    // Don't update movement if stunned (allows grabbing)
                     return;
                 }
                 if (this.pos.y < -8) {
@@ -4739,12 +4808,20 @@
             }
             redSlash(pos) {
                 const g = new THREE.Group();
-                const glow = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.18), new THREE.MeshBasicMaterial({ color: 0xff1010, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-                const core = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 0.07), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 1, depthWrite: false, side: THREE.DoubleSide }));
+                const shape = new THREE.Shape();
+                shape.moveTo(-1, 0);
+                shape.quadraticCurveTo(0, 0.8, 1, 0);
+                shape.quadraticCurveTo(0, -0.2, -1, 0);
+                const geo = new THREE.ShapeGeometry(shape);
+
+                const glow = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xff1010, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+                glow.scale.set(1.5, 1.5, 1);
+                const core = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 1, depthWrite: false, side: THREE.DoubleSide }));
+                core.scale.set(1.2, 1.2, 1);
                 core.position.z = 0.01; g.add(glow); g.add(core);
                 g.position.copy(pos); g.rotation.set(rand(-1, 1), rand(-1, 1), rand(-1, 1));
                 this.game.scene.add(g);
-                this.impacts.push({ mesh: g, vel: new THREE.Vector3(0, 0, 0), life: 0.5, maxLife: 0.5, geo: glow.geometry, mat: glow.material, gravity: 0 });
+                this.impacts.push({ mesh: g, vel: new THREE.Vector3(0, 0, 0), life: 0.6, maxLife: 0.6, geo, mat: glow.material, gravity: 0 });
             }
             sliceBotInHalf(bot) {
                 if (bot.isSliced) return;
