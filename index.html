@@ -11,10 +11,10 @@
 </head>
 
 <body>
-    <canvas id="game"></canvas>
+    <canvas id="c"></canvas>
     <div id="flashOverlay"></div>
-    <div id="whiteFlash"></div>
 
+    <!-- Multiplayer Waiting Lobby -->
     <div id="waitingLobby">
         <div id="lobbyRoomCodeBox">
             <div class="lobby-room-label">ROOM CODE</div>
@@ -25,31 +25,25 @@
         <p id="lobbyStatus">1 / 4 READY</p>
         <div id="lobbyPlayers"></div>
         <div class="row">
-            <button class="btn" id="btnStartMatch" style="display:none" onclick="game.network.startMatch()">START
-                MATCH</button>
-            <button class="btn ghost"
-                onclick="game.network.disconnect(); document.getElementById('waitingLobby').classList.remove('show'); game._quitToMenu();">LEAVE
-                LOBBY</button>
+            <button class="btn" id="btnStartMatch" style="display:none">START MATCH</button>
+            <button class="btn ghost" id="btnLeaveLobby">LEAVE LOBBY</button>
         </div>
     </div>
+
+    <!-- Domain Clash Overlay -->
     <div id="clashOverlay">
         <div class="cl-title">DOMAIN CLASH</div>
         <div class="cl-sub">OVERWHELM THE OPPONENT'S BARRIER</div>
-        <div class="cl-bars">
-            <div class="cl-side">
-                <div class="cl-name">YOU</div>
-                <div class="cl-meter"><i id="clashMyBar"></i></div>
-            </div>
-            <div class="cl-side">
-                <div class="cl-name" id="clashOppName">RIVAL</div>
-                <div class="cl-meter"><i id="clashOppBar"></i></div>
-            </div>
+        <div class="cl-meter-wrap">
+            <div class="cl-labels"><span>YOU</span><span>RIVAL</span></div>
+            <div class="cl-meter"><i id="clashBarFill"></i></div>
         </div>
         <div class="cl-key">[ MASH SPACE ]</div>
-        <div class="cl-timer" id="clashTimer">6.0s</div>
+        <div class="cl-timer" id="clashTimer">6.0S</div>
     </div>
 
-    <div id="leaderboardOverlay">
+    <!-- Scoreboard (TAB) -->
+    <div id="leaderboard">
         <div class="lbFrame">
             <h2>SCOREBOARD</h2>
             <table class="lbTable">
@@ -68,119 +62,124 @@
         </div>
     </div>
 
-    <div id="hud" class="hidden">
-        <div id="damageNums"></div>
-        <div id="compassBar" class="mono">HDG <b>000° N</b> · STREAK <b id="hudStreakNum">0</b></div>
+    <!-- In-Game HUD -->
+    <div id="hud" style="display:none">
         <div id="bossBar">
-            <div id="bossName">OMEGA WARDEN // TITAN CLASS</div>
+            <div id="bossName">OMEGA WARDEN // TITAN</div>
             <div id="bossTrack">
                 <div id="bossFill"></div>
             </div>
         </div>
+
         <div id="radarWrap">
-            <canvas id="radarCanvas" width="144" height="144"></canvas>
+            <canvas id="radar" width="144" height="144"></canvas>
         </div>
-        <!-- === REPLACE #trainingBanner (lines 2057-2060) === -->
-<div id="trainingBanner">
-    <div><b>[V]</b> SUKUNA VESSEL · <b>[H]</b> FULL HEAL + REFILL · <b>[G]</b> FLASH</div>
-    <div class="tg-controls">
-        <button type="button" class="tg-btn" onclick="window.game && window.game.spawnTrainingDummy(false)">+ Dummy [B]</button>
-        <button type="button" class="tg-btn" onclick="window.game && window.game.spawnTrainingDummy(true)">+ Moving Dummy [N]</button>
-        <button type="button" class="tg-btn" onclick="window.game && window.game.resetTrainingDummies()">Reset HP</button>
-        <button type="button" class="tg-btn danger" onclick="window.game && window.game.clearTrainingDummies()">Clear Dummies [M]</button>
-    </div>
-</div>
-        <div id="sukunaHud">
-            <div id="sukunaTimer">35.0s</div>
-            <div class="sukuna-skill" id="sukunaDismantle">LMB · DISMANTLE</div>
-            <div class="sukuna-skill" id="sukunaCleave">RMB · CLEAVE</div>
-            <div class="sukuna-skill" id="sukunaFuga">Q · FUGA FLAME</div>
-            <div class="sukuna-skill" id="sukunaDomain">E · DOMAIN EXPANSION</div>
+
+        <div id="trainingBanner">
+            <div><b>[V]</b> SUKUNA VESSEL · <b>[H]</b> FULL HEAL + RESET · <b>[T]</b> SPAWN BOSS</div>
+            <div class="tg-controls">
+                <button type="button" class="tg-btn" id="btnTrainSpawn">+ Dummy [B]</button>
+                <button type="button" class="tg-btn" id="btnTrainMoving">+ Moving Dummy [N]</button>
+                <button type="button" class="tg-btn" id="btnTrainReset">Reset HP</button>
+                <button type="button" class="tg-btn danger" id="btnTrainClear">Clear Dummies [M]</button>
+            </div>
         </div>
-        <div id="scopeOverlay">
+
+        <div id="scope">
             <div class="scope-backdrop"></div>
             <div class="scope-ring">
                 <div class="scope-line-h"></div>
                 <div class="scope-line-v"></div>
             </div>
             <div class="scope-info">
-                <span>LONGBOW .50</span>
+                <span>OPTIC MAGNIFICATION</span>
                 <span>ZOOM <b>6.0x</b></span>
                 <span>RANGE 400m</span>
             </div>
         </div>
-        <div id="damageDir"></div>
-        <div id="crosshair"><span class="ch t"></span><span class="ch b"></span><span class="ch l"></span><span
-                class="ch r"></span><span class="ch dot"></span></div>
-        <div id="katanaPrompt">LMB SLASH · SLIDE+LMB CRESCENT · RMB PARRY</div>
+
+        <div id="damageFlash"></div>
+        <div id="damageArrow"></div>
+
+        <div id="crosshair">
+            <span class="ch t"></span>
+            <span class="ch b"></span>
+            <span class="ch l"></span>
+            <span class="ch r"></span>
+            <span class="ch dot"></span>
+        </div>
+
         <div id="hitmarker"><span></span><span></span><span></span><span></span></div>
-        <div id="vignette"></div>
-        <div id="parryVignette"></div>
+
         <div id="topInfo">
-            <div id="modeLabel">SOLO WAVE</div>
-            <div id="waveLabel">WAVE 01</div>
-            <div id="enemyLabel">HOSTILES 0</div>
+            <div class="stat-pill">WAVE <b id="waveNum" class="mono">01</b></div>
+            <div class="stat-pill">HOSTILES <b id="aliveCount" class="mono">0</b></div>
+            <div class="stat-pill">KILLS <b id="killsCount" class="mono">0</b></div>
+            <div class="stat-pill">POINTS <b id="pointsCount" class="mono">0</b></div>
         </div>
-        <div id="killfeed"></div>
-        <div id="killSkull">☠</div>
-        <div id="buffBar"></div>
-        <div id="streakHud">
-            <div class="ks-pill" id="ks3">[Z] 3-STREAK · OVERDRIVE STIM</div>
-            <div class="ks-pill" id="ks5">[X] 5-STREAK · ORBITAL STRIKE</div>
-            <div class="ks-pill" id="ks7">[V] 7-STREAK · SUKUNA VESSEL</div>
-        </div>
+
+        <div id="killFeed"></div>
+        <div id="skullPop">☠</div>
+        <div id="buffBadges"></div>
+        <div id="abilityHud"></div>
+
         <div id="healthBlock">
-            <div class="label">VITALS</div>
-            <div id="healthChip"
-                style="position:absolute;right:0;top:-26px;font-size:11px;letter-spacing:2px;color:#8effc4;font-weight:700">
-                100 HP</div>
-            <div class="bar">
-                <div id="healthFill"></div>
+            <div class="vitals-row">
+                <span class="label">ARMOR</span>
+                <span id="shieldVal" class="mono shield-num">50</span>
             </div>
-            <div id="healthNum" class="mono">100</div>
+            <div class="bar shield-track">
+                <div id="shieldBar"></div>
+            </div>
+            <div class="vitals-row" style="margin-top:8px">
+                <span class="label">VITALS</span>
+                <span id="hpVal" class="mono hp-num">100</span>
+            </div>
+            <div class="bar">
+                <div id="hpBar"></div>
+            </div>
         </div>
-        <div id="medkitBlock" class="empty">
+
+        <div id="medkitBlock">
             <div class="medkit-icon">✚</div>
             <div class="medkit-info">
-                <div class="medkit-label">MEDKIT [F]</div>
-                <div id="medkitCount" class="medkit-count">0/1</div>
+                <div class="medkit-label">MEDKIT [E]</div>
+                <div id="medCount" class="medkit-count mono">1</div>
             </div>
         </div>
-        <div id="flashBlock" class="empty">
+
+        <div id="flashBlock">
             <div class="medkit-icon">⚡</div>
             <div class="medkit-info">
                 <div class="medkit-label">FLASH [G]</div>
-                <div id="flashCount" class="medkit-count">0/2</div>
+                <div id="flashCount" class="medkit-count mono">2</div>
             </div>
         </div>
+
         <div id="ammoBlock">
-            <div id="weaponName">MK-7 CARBINE</div>
-            <div class="ammoRow"><span id="ammoMag" class="mono">30</span><span id="ammoRes" class="mono">/ 240</span>
+            <div id="wepName">MK-7 CARBINE</div>
+            <div class="ammoRow">
+                <span id="magVal" class="mono">30</span>
+                <span class="ammo-sep">/</span>
+                <span id="resVal" class="mono">240</span>
             </div>
-            <div id="reloadBar">
-                <div id="reloadFill"></div>
-            </div>
-            <div id="slotList"></div>
-        </div>
-        <div id="abilityHud">
-            <div id="abilitySlot">
-                <div id="abilityKey">E</div>
-                <div id="abilityIcon">—</div>
-                <div id="abilityCharges">0</div>
-            </div>
-            <div id="abilityCdBar">
-                <div id="abilityCdFill"></div>
+            <div id="reloadMsg">RELOADING...</div>
+            <div id="slotList">
+                <div class="slot active" id="slot0">[1] <span class="s-name">MK-7</span></div>
+                <div class="slot" id="slot1">[2] <span class="s-name">SG-12</span></div>
+                <div class="slot" id="slot2">[3] <span class="s-name">RPG</span></div>
+                <div class="slot" id="slot3">[4] <span class="s-name">KNIFE</span></div>
             </div>
         </div>
     </div>
 
-    <div id="centerMsg">
-        <div class="big"></div>
-        <div class="small"></div>
+    <!-- Center Announcements -->
+    <div id="centerBanner">
+        <div id="centerMsg"></div>
+        <div id="cmSub"></div>
     </div>
-    <div id="countdown">3</div>
-    <div id="clickHint"><span>CLICK TO RESUME AIM</span></div>
 
+    <!-- Main Menu -->
     <div id="menu">
         <div class="topbar">
             <div class="brand">
@@ -188,110 +187,120 @@
                 <div class="rule"></div>
                 <div class="sub">CLASSIFIED COMBAT SIMULATION // BUILD 2.6.0</div>
             </div>
-            <div class="meta">OPERATOR <b id="menuName">RECRUIT</b><br>POINTS <b id="menuPoints">0</b><br>MAP <b
-                    id="menuMap">BLACKSITE</b><br><span>SYSTEM READY</span></div>
+            <div class="meta">POINTS <b id="menuPoints" class="mono">0</b><br><span>SYSTEM READY</span></div>
         </div>
         <div class="mid">
             <nav class="menu-nav">
-                <button data-action="wave">Solo Wave<small>Endless survival · elites · boss waves</small></button>
-                <button data-action="training">Training Grounds<small>Sandbox · infinite ammo · Redliner Katana &amp;
-                        Sukuna</small></button>
-                <button data-action="multiplayer">Multiplayer<small>PeerJS WebRTC · Private + Public
-                        servers</small></button>
-                <button data-action="loadout">Loadout<small>Weapons · camos · kit</small></button>
-                <button data-action="shop">Armory / Shop<small>Weapons · camos · mastery challenges</small></button>
-                <button data-action="maps">Maps<small>Select reworked battlefield</small></button>
-                <button data-action="settings">Settings<small>Operator suits · Audio · FOV ·
-                        Sensitivity</small></button>
+                <button id="btnSolo">Solo Wave<small>Endless survival · elites · boss waves</small></button>
+                <button id="btnTraining">Training Grounds<small>Sandbox · infinite ammo · Redliner Katana &amp; Sukuna</small></button>
+                <button id="btnMulti">Multiplayer<small>PeerJS WebRTC · Private + Public servers</small></button>
+                <button id="btnLoadout">Loadout<small>Weapons · camos · kit</small></button>
+                <button id="btnShop">Armory / Shop<small>Weapons · camos · mastery challenges</small></button>
+                <button id="btnMaps">Maps<small>Select reworked battlefield</small></button>
+                <button id="btnSettings">Settings<small>Operator suits · Audio · FOV · Sensitivity</small></button>
             </nav>
         </div>
         <div class="footbar">
-            <div>WASD MOVE · <b>SHIFT</b> SPRINT · <b>SPACE</b> JUMP · <b>C</b> SLIDE · <b>F</b> MEDKIT · <b>G</b> FLASH
-            </div>
-            <div><b>1-5</b> WEAPONS · <b>R</b> RELOAD · <b>E</b> ABILITY · <b>Z/X/V</b> STREAKS · <b>TAB</b> SCOREBOARD
-            </div>
+            <div>WASD MOVE · <b>SHIFT</b> SPRINT · <b>SPACE</b> JUMP · <b>C</b> SLIDE · <b>E</b> MEDKIT · <b>G</b> FLASH</div>
+            <div><b>1-4</b> WEAPONS · <b>R</b> RELOAD · <b>F</b> ABILITY · <b>Z/X/V</b> STREAKS · <b>TAB</b> SCOREBOARD</div>
         </div>
     </div>
 
-    <div id="pausePanel" class="panel hidden">
-        <div class="frame" style="width:min(560px,90vw)">
+    <!-- Pause Modal -->
+    <div id="pausePanel" class="modal-panel">
+        <div class="frame" style="width:min(480px,90vw)">
             <h2>PAUSED</h2>
-            <div class="hintline" id="pauseHint">SIMULATION SUSPENDED</div>
-            <div id="pauseServerBox" class="hidden">
-                <div style="font-size:11px;letter-spacing:3px;color:#5f6f82;margin-bottom:6px">ROOM CODE</div>
-                <div id="serverCodeBox">——</div>
-                <div style="font-size:10px;letter-spacing:2px;color:#5f6f82;margin-bottom:14px">Click to select · Ctrl+C
-                    to copy</div>
-            </div>
+            <div class="hintline">SIMULATION SUSPENDED</div>
             <div class="row" style="flex-direction:column;gap:10px">
-                <button class="btn" data-action="resume">Resume</button>
-                <button class="btn ghost" data-action="restart">Restart Match</button>
-                <button class="btn ghost" data-action="quit">Return to Main Menu</button>
+                <button class="btn" id="btnResume">Resume</button>
+                <button class="btn ghost" id="btnRestart">Restart Match</button>
+                <button class="btn ghost" id="btnQuit">Return to Main Menu</button>
             </div>
         </div>
     </div>
 
-    <div id="overPanel" class="panel hidden">
-        <div class="frame" style="width:min(620px,92vw)">
-            <h2 id="overTitle">ELIMINATED</h2>
-            <div class="hintline" id="overSub">MISSION FAILED</div>
-            <div id="overStats"
-                style="font-size:14px;letter-spacing:2px;line-height:2;color:#9fb2c6;margin-bottom:22px"></div>
-            <div class="row"><button class="btn" data-action="restart">Retry</button><button class="btn ghost"
-                    data-action="quit">Main Menu</button></div>
+    <!-- Game Over Modal -->
+    <div id="overPanel" class="modal-panel">
+        <div class="frame" style="width:min(540px,92vw)">
+            <h2>ELIMINATED</h2>
+            <div class="hintline">MISSION FAILED</div>
+            <div class="over-grid">
+                <div class="over-stat"><span>WAVE REACHED</span><b id="overWave" class="mono">1</b></div>
+                <div class="over-stat"><span>HOSTILES ELIMINATED</span><b id="overKills" class="mono">0</b></div>
+                <div class="over-stat"><span>POINTS EARNED</span><b id="overPts" class="mono accent">+0</b></div>
+            </div>
+            <div class="row">
+                <button class="btn" id="btnRetry">Retry</button>
+                <button class="btn ghost" id="btnOverMenu">Main Menu</button>
+            </div>
         </div>
     </div>
 
-    <div id="loadoutPanel" class="panel hidden">
+    <!-- Loadout Overlay -->
+    <div id="loadoutPanel" class="overlay-panel hidden">
         <div class="frame">
             <h2>LOADOUT</h2>
-            <div class="hintline">ASSIGN WEAPONS TO SLOTS AND CHOOSE CAMOS</div>
-            <div id="loadoutGrid"></div>
-            <div class="row" style="margin-top:26px"><button class="btn ghost" data-action="close-panel">Back</button>
+            <div class="hintline">CLICK AN UNLOCKED WEAPON TO EQUIP IT TO YOUR ACTIVE SLOT</div>
+            <div class="cardGrid" id="loadoutGrid"></div>
+            <div class="row" style="margin-top:26px">
+                <button class="btn ghost btn-close-panel">Back</button>
             </div>
         </div>
     </div>
 
-    <div id="shopPanel" class="panel hidden">
+    <!-- Armory / Shop Overlay -->
+    <div id="shopPanel" class="overlay-panel hidden">
         <div class="frame">
             <h2>ARMORY</h2>
-            <div class="hintline">SPEND COMBAT POINTS ON WEAPONS · CAMOS · 3D DRAGON MODELS</div>
-            <div
-                style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px">
-                <div style="font-size:14px;letter-spacing:3px">BALANCE: <b class="accent mono" id="shopBalance">0</b>
-                    PTS
-                </div>
-                <div style="display:flex;align-items:center;gap:10px">
-                    <span style="font-size:11px;letter-spacing:2px;color:#7d8fa4">CAMO TARGET WEAPON:</span>
-                    <select id="shopCamoWeapon" class="codeInput"
-                        style="width:auto;padding:8px 14px;font-size:12px"></select>
-                </div>
+            <div class="hintline">SPEND COMBAT POINTS TO UNLOCK NEW WEAPONS</div>
+            <div style="margin-bottom:18px;font-size:14px;letter-spacing:3px">
+                BALANCE: <b class="accent mono" id="shopPoints">0</b> PTS
             </div>
-            <div class="shopGrid" id="shopGrid"></div>
-            <div class="row" style="margin-top:26px"><button class="btn ghost" data-action="close-panel">Back</button>
+            <div class="cardGrid" id="shopGrid"></div>
+            <div class="row" style="margin-top:26px">
+                <button class="btn ghost btn-close-panel">Back</button>
             </div>
         </div>
     </div>
 
-    <div id="mpPanel" class="panel hidden">
+    <!-- Multiplayer Overlay -->
+    <div id="mpPanel" class="overlay-panel hidden">
         <div class="frame">
             <h2>MULTIPLAYER (P2P)</h2>
             <div class="hintline">SERVERLESS WEBRTC · WORKS ON GITHUB PAGES</div>
             <div class="mpHint">
-                <b>HOW IT WORKS:</b> Uses PeerJS (WebRTC) for direct cross-device multiplayer. No backend server
-                required. The Host acts as the central relay.<br><br>
-                <b>PRIVATE:</b> Host a private server, share the room code with friends.<br>
-                <b>PUBLIC:</b> Claim a public slot — anyone can browse &amp; join without a code.
+                <b>PRIVATE:</b> Host a private lobby and share the generated room code with friends.<br>
+                <b>PUBLIC:</b> Claim a public slot so other operators can browse and join directly.
+            </div>
+            <div class="mp-config-row">
+                <div>
+                    <div class="field-label">GAMEMODE</div>
+                    <select id="hostMode" class="codeInput">
+                        <option value="PVP">Free-For-All (PVP)</option>
+                        <option value="COOP">Co-op Wave</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="field-label">MAX PLAYERS</div>
+                    <select id="hostMax" class="codeInput">
+                        <option value="2">2</option>
+                        <option value="4" selected>4</option>
+                        <option value="6">6</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="field-label">JOIN BY CODE</div>
+                    <div style="display:flex;gap:8px">
+                        <input id="joinCodeInput" class="codeInput" type="text" placeholder="BSR-XXXX" maxlength="20" />
+                        <button class="btn" id="btnJoinCode">Join</button>
+                    </div>
+                </div>
             </div>
             <div class="row" style="margin-bottom:16px">
-                <button class="btn" data-action="host">Host Private Server</button>
-                <button class="btn" data-action="host-public">Host Public Server</button>
-                <button class="btn" data-action="join-code">Join by Code</button>
-            </div>
-            <div class="row" style="margin-bottom:12px">
-                <button class="btn ghost" data-action="refresh-public">↻ Refresh Public Servers</button>
-                <span id="publicStatus" style="font-size:11px;letter-spacing:2px;color:#5f6f82;align-self:center">Click
-                    refresh to scan</span>
+                <button class="btn" id="btnHostPriv">Host Private Server</button>
+                <button class="btn" id="btnHostPub">Host Public Server</button>
+                <button class="btn ghost" id="btnRefreshServers">↻ Refresh Public Servers</button>
+                <span id="publicStatus" style="font-size:11px;letter-spacing:2px;color:#5f6f82;align-self:center">Click refresh to scan</span>
             </div>
             <table class="srvTable">
                 <thead>
@@ -309,105 +318,56 @@
                     </tr>
                 </tbody>
             </table>
-            <div class="row" style="margin-top:20px"><button class="btn ghost" data-action="close-panel">Back</button>
+            <div class="row" style="margin-top:20px">
+                <button class="btn ghost btn-close-panel">Back</button>
             </div>
         </div>
     </div>
 
-    <div id="hostPanel" class="panel hidden">
-        <div class="frame" style="width:min(560px,90vw)">
-            <h2>HOST SERVER</h2>
-            <div class="hintline">CONFIGURE LOBBY</div>
-            <div style="display:flex;flex-direction:column;gap:16px">
-                <div>
-                    <div style="font-size:11px;letter-spacing:3px;color:#5f6f82;margin-bottom:6px">GAMEMODE</div>
-                    <select id="hostMode" class="codeInput">
-                        <option value="PVP">Free-For-All (PVP)</option>
-                        <option value="COOP_WAVE">Co-op Wave</option>
-                    </select>
-                </div>
-                <div>
-                    <div style="font-size:11px;letter-spacing:3px;color:#5f6f82;margin-bottom:6px">MAP</div>
-                    <select id="hostMap" class="codeInput">
-                        <option value="blacksite">Blacksite</option>
-                        <option value="foundry">Foundry</option>
-                        <option value="abyss">Abyss</option>
-                        <option value="void">Void</option>
-                        <option value="zenith">Zenith</option>
-                    </select>
-                </div>
-                <div>
-                    <div style="font-size:11px;letter-spacing:3px;color:#5f6f82;margin-bottom:6px">MAX PLAYERS</div>
-                    <select id="hostMax" class="codeInput">
-                        <option value="2">2</option>
-                        <option value="4" selected>4</option>
-                        <option value="6">6</option>
-                    </select>
-                </div>
-            </div>
-            <div class="row" style="margin-top:26px"><button class="btn" data-action="confirm-host">Generate Room
-                    Code</button><button class="btn ghost" data-action="close-panel">Cancel</button></div>
-        </div>
-    </div>
-
-    <div id="joinPanel" class="panel hidden">
-        <div class="frame" style="width:min(440px,92vw)">
-            <h2>JOIN SERVER</h2>
-            <div class="hintline">ENTER ROOM CODE</div>
-            <input id="joinCodeInput" class="codeInput" type="text" placeholder="BSR-XXXX" maxlength="20" />
-            <div class="row" style="margin-top:20px"><button class="btn" data-action="do-join">Connect</button><button
-                    class="btn ghost" data-action="close-panel">Cancel</button></div>
-        </div>
-    </div>
-
-    <div id="mapsPanel" class="panel hidden">
+    <!-- Maps Overlay -->
+    <div id="mapsPanel" class="overlay-panel hidden">
         <div class="frame">
             <h2>SELECT MAP</h2>
             <div class="hintline">CHOOSE BATTLEFIELD LAYOUT</div>
-            <div class="mapGrid" id="mapGrid"></div>
-            <div class="row" style="margin-top:26px"><button class="btn ghost" data-action="close-panel">Back</button>
+            <div class="cardGrid" id="mapsGrid"></div>
+            <div class="row" style="margin-top:26px">
+                <button class="btn ghost btn-close-panel">Back</button>
             </div>
         </div>
     </div>
 
-    <div id="settingsPanel" class="panel hidden">
+    <!-- Settings Overlay -->
+    <div id="settingsPanel" class="overlay-panel hidden">
         <div class="frame" style="width:min(740px,92vw)">
             <h2>SETTINGS</h2>
-            <div class="hintline">OPERATOR SUIT · INPUT · PRESENTATION</div>
-            <div style="font-size:11px;letter-spacing:3px;color:#7d8fa4;margin-bottom:6px">OPERATOR SUIT PRESETS</div>
-            <div class="skinGrid" id="skinGrid"></div>
+            <div class="hintline">OPERATOR IDENTITY · AUDIO · INPUT · FIELD OF VIEW</div>
             <div class="settingsGrid">
-                <label>DISPLAY NAME</label><input id="setName" class="codeInput" type="text" maxlength="14"
-                    style="padding:6px; font-size:12px;" /><span></span>
-                <label>PLAYER SKIN</label><input id="setSkin" type="color" value="#e8ecf0" /><span></span>
-                <label>UI COLOR</label><input id="setColor" type="color" value="#ff7a1a" /><span></span>
+                <label>DISPLAY NAME</label><input id="setPlayerName" class="codeInput" type="text" maxlength="16"
+                    style="padding:8px;font-size:12px" /><span></span>
                 <label>MASTER VOLUME</label><input id="setVol" type="range" min="0" max="1" step="0.02"
-                    value="0.6" /><span id="setVolVal">60%</span>
-                <label>MUSIC VOLUME</label><input id="setMusicVol" type="range" min="0" max="1" step="0.02"
-                    value="0.4" /><span id="setMusicVolVal">40%</span>
+                    value="0.6" /><span id="setVolVal">0.6</span>
+                <label>MUSIC VOLUME</label><input id="setMusic" type="range" min="0" max="1" step="0.02"
+                    value="0.4" /><span id="setMusicVal">0.4</span>
                 <label>FIELD OF VIEW</label><input id="setFov" type="range" min="70" max="120" step="1"
                     value="90" /><span id="setFovVal">90°</span>
                 <label>MOUSE SENSITIVITY</label><input id="setSens" type="range" min="0.3" max="3" step="0.05"
-                    value="1" /><span id="setSensVal">1.00</span>
+                    value="1" /><span id="setSensVal">1x</span>
                 <label>SCOPE SENSITIVITY</label><input id="setScopeSens" type="range" min="0.1" max="2" step="0.05"
-                    value="0.8" /><span id="setScopeSensVal">0.80</span>
-                <label>INVERT Y</label><input id="setInv" type="checkbox" /><span></span>
+                    value="0.8" /><span id="setScopeSensVal">0.8x</span>
+                <label>INVERT Y</label><input id="setInvert" type="checkbox" /><span></span>
             </div>
             <div class="row" style="margin-top:26px;justify-content:space-between">
-                <div>
-                    <button class="btn" data-action="apply-settings">Apply</button>
-                    <button class="btn ghost" data-action="close-panel">Back</button>
-                </div>
-                <button class="btn ghost" style="border-color:#ff3b3b;color:#ff3b3b" onclick="SaveSystem.reset()">RESET
-                    SAVE DATA</button>
+                <button class="btn ghost btn-close-panel">Back</button>
+                <button class="btn ghost" id="btnResetSave" style="border-color:#ff3b3b;color:#ff3b3b">RESET SAVE DATA</button>
             </div>
         </div>
     </div>
 
     <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
-<script type="importmap">
-    { "imports": { "three": "https://unpkg.com/three@0.160.1/build/three.module.js" } }
-</script>
-<script type="module" src="script.js"></script>
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.1/build/three.module.js" } }
+    </script>
+    <script type="module" src="script.js"></script>
 </body>
+
 </html>
