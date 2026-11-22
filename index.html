@@ -2710,6 +2710,13 @@
             shoot(kind, pos) {
                 const s = this._spatial(pos); if (s.gain < 0.02) return;
                 if (kind === 'katana') { this.katanaSlash(false, 0, pos); return; }
+                if (kind === 'dismantle') {
+                    this._noise({ dur: .19, gain: .58 * s.gain, freq: 6800, freqEnd: 320, q: 2.4, type: 'bandpass', pan: s.pan, reverb: true });
+                    this._sweep(2600, 420, .16, .34 * s.gain, 'sawtooth', s.pan, true);
+                    this._sweep(3900, 780, .14, .22 * s.gain, 'triangle', s.pan, true);
+                    this._sub(68, .15, .42 * s.gain, s.pan);
+                    return;
+                }
                 this._click(0.55 * s.gain, s.pan);
                 if (kind === 'rifle' || kind === 'smg' || kind === 'lmg' || kind === 'ak47') {
                     this._noise({ dur: .09, gain: .42 * s.gain, freq: 5500, freqEnd: 400, q: .85, pan: s.pan });
@@ -3358,9 +3365,37 @@
                     setTimeout(() => {
                         const stillValid = this.domainQueue.find(q => q.id === playerId);
                         if (stillValid) {
-                            this.broadcast({ type: 'DOMAIN', playerId: playerId });
-                            if (playerId !== this.myId) this.game.triggerDomainExpansion(false);
-                            else this.game.triggerDomainExpansion(true);
+                            const casterState = this.players[playerId] && this.players[playerId].state;
+                            const centerVec = (playerId === this.myId && this.game.player)
+                                ? this.game.player.pos.clone()
+                                : (casterState && casterState.pos ? new THREE.Vector3(...casterState.pos) : this.game.player.pos.clone());
+                            const centerArr = [centerVec.x, centerVec.y, centerVec.z];
+
+                            this.broadcast({ type: 'DOMAIN', playerId: playerId, center: centerArr });
+                            if (playerId !== this.myId) this.game.triggerDomainExpansion(false, centerVec);
+                            else this.game.triggerDomainExpansion(true, centerVec);
+
+                            let slotIdx = 0;
+                            for (const pid in this.players) {
+                                if (pid === playerId) continue;
+                                const pState = (pid === this.myId && this.game.player)
+                                    ? { pos: [this.game.player.pos.x, this.game.player.pos.y, this.game.player.pos.z], alive: this.game.player.alive }
+                                    : (this.players[pid] && this.players[pid].state);
+                                if (!pState || !pState.pos || pState.alive === false) continue;
+                                const pPos = new THREE.Vector3(...pState.pos);
+                                if (pPos.distanceTo(centerVec) <= 55) {
+                                    const angle = (slotIdx++ * 2.1) + 0.6;
+                                    const pullPos = [centerVec.x + Math.cos(angle) * 10, centerVec.y + 0.25, centerVec.z + Math.sin(angle) * 10];
+                                    if (pid === this.myId && this.game.player && this.game.player.alive) {
+                                        this.game.player.pos.set(...pullPos);
+                                        this.game.player.vel.set(0, 0, 0);
+                                        this.game.player._resetViewState();
+                                    } else {
+                                        this.broadcast({ type: 'DOMAIN_TELEPORT', targetId: pid, pos: pullPos });
+                                    }
+                                }
+                            }
+
                             this.domainQueue = this.domainQueue.filter(q => q.id !== playerId);
                         }
                     }, 150);
@@ -3393,6 +3428,7 @@
                         const attackerPos = (data.attackerId && this.players[data.attackerId] && this.players[data.attackerId].state && this.players[data.attackerId].state.pos)
                             ? new THREE.Vector3(...this.players[data.attackerId].state.pos) : null;
                         this.game.lastAttacker = data.attackerId || 'Unknown';
+                        this.game.lastHitHeadshot = !!data.headshot;
                         const canDamage = !this.game.isCoop() || !data.attackerId || data.attackerId === 'bot';
                         const deflectNo = data.deflect || 0;
                         const p = this.game.player;
@@ -3422,6 +3458,28 @@
                     this.game.ui.addKillFeed(data.killerName + ' ✕ ' + data.victimName, data.headshot);
                     if (data.deathPos && data.victimId !== this.myId) this.game.spawnMedkitDrop(new THREE.Vector3(data.deathPos[0], data.deathPos[1], data.deathPos[2]));
                     if (data.victimId === this.myId && this.game.player.alive) { this.game.player.health = 0; this.game.player.alive = false; this.game.onPlayerDied(); }
+                    if (data.killerId === this.myId && data.victimId !== this.myId) {
+                        this.game.kills++;
+                        const pts = 100 + (data.headshot ? 25 : 0);
+                        this.game.pointsEarned += pts;
+                        SaveSystem.data.points += pts;
+                        const curW = this.game.player && this.game.player.currentWeapon;
+                        if (curW && WEAPON_CHALLENGES[curW.kind]) {
+                            const prevKills = SaveSystem.data.challenges[curW.kind] || 0;
+                            const nextKills = prevKills + 1;
+                            SaveSystem.data.challenges[curW.kind] = nextKills;
+                            const goal = WEAPON_CHALLENGES[curW.kind];
+                            if (prevKills < goal && nextKills >= goal) {
+                                SaveSystem.data.points += 1000;
+                                this.game.pointsEarned += 1000;
+                                this.game.ui.showCenterMsg(`${curW.name} MASTERED!`, '+1000 PTS MASTERY REWARD', 2200);
+                            }
+                        }
+                        SaveSystem.save();
+                        this.game.ui.popSkull();
+                        audio.kill();
+                        this.game._registerKillStreak(null);
+                    }
                     this.updateLeaderboard();
                     if (this.isHost) this.broadcast(data);
                 } else if (data.type === 'RESPAWN') {
@@ -3441,17 +3499,26 @@
                     if (!this.isHost) this.game.abilitySystem.spawnPickupAt(data.pos, data.pType);
                 } else if (data.type === 'SUKUNA') {
                     if (data.playerId !== this.myId) {
-                        this.game.ui.showCenterMsg("RYOMEN SUKUNA ARRIVES 8:30 PM", "", 5000);
+                        this.game.ui.showCenterMsg("RYOMEN SUKUNA ARRIVES", "", 5000);
                         audio.domain();
                     }
                 } else if (data.type === 'DOMAIN_INTENT') {
                     this.processDomainIntent(data.playerId);
                 } else if (data.type === 'DOMAIN') {
                     if (data.playerId === this.myId) return;
+                    const casterState = this.players[data.playerId] && this.players[data.playerId].state;
+                    const center = data.center
+                        ? new THREE.Vector3(...data.center)
+                        : (casterState && casterState.pos ? new THREE.Vector3(...casterState.pos) : this.game.player.pos.clone());
                     this.game.ui.showCenterMsg("DOMAIN EXPANSION MALEVOLENT SHRINE", "", 4000);
-                    this.game.triggerDomainExpansion(false);
+                    this.game.triggerDomainExpansion(false, center);
                 } else if (data.type === 'DOMAIN_TELEPORT') {
-                    if (this.game.player && this.game.player.alive) { this.game.player.pos.set(...data.pos); this.game.player.vel.set(0, 0, 0); this.game.player._resetViewState(); }
+                    if ((!data.targetId || data.targetId === this.myId) && this.game.player && this.game.player.alive) {
+                        this.game.player.pos.set(...data.pos);
+                        this.game.player.vel.set(0, 0, 0);
+                        this.game.player._resetViewState();
+                    }
+                    if (this.isHost) this.broadcast(data);
                 } else if (data.type === 'DOMAIN_END') {
                     this.game.endDomain();
                 } else if (data.type === 'CLASH_START') {
@@ -5780,7 +5847,7 @@
                     } else if (rHit) {
                         let dmg = w.damage * (rHit.head ? w.headMult : 1);
                         if (w.falloff) dmg *= clamp(1 - (rHit.dist - 6) / 30, .25, 1);
-                        game.network.broadcast({ type: 'HIT', targetId: rHit.id, damage: Math.round(dmg), attackerId: game.network.myId, attackerName: game.network.myName });
+                        game.network.broadcast({ type: 'HIT', targetId: rHit.id, damage: Math.round(dmg), attackerId: game.network.myId, attackerName: game.network.myName, headshot: rHit.head });
                         game.ui.showHitmarker(rHit.head); game.ui.spawnDamageNum(Math.round(dmg), rHit.head, rHit.point); audio.hit(rHit.head);
                         this.effects.sparks(rHit.point, rHit.head ? 0xff4444 : 0xffcc66, rHit.head ? 16 : 8, 5);
                     } else if (bHit) {
@@ -5872,7 +5939,7 @@
                         return;
                     }
 
-                    if (isSniper) this.weaponHolder.visible = this.adsLerp < 0.75;
+                    if (isSniper) this.weaponHolder.visible = this.adsLerp < 0.72;
                     else this.weaponHolder.visible = true;
 
                     const tx = lerp(.26, 0, this.adsLerp) + Math.cos(this.bobT * .5) * .006 * (1 - this.adsLerp);
@@ -6267,8 +6334,16 @@
                 if (this.el.katanaPrompt) this.el.katanaPrompt.classList.toggle('show', isKatana);
 
                 this.el.crosshair.style.setProperty('--bloom', (player.bloom * 14 + (player.ads ? -5 : 0)) + 'px');
-                const isScoped = player.ads && (w.kind === 'sniper' || w.kind === 'kar98') && player.adsLerp > .55;
+                const isScoped = player.ads && (w.kind === 'sniper' || w.kind === 'kar98') && player.adsLerp >= 0.72;
                 this.el.scopeOverlay.classList.toggle('active', isScoped);
+                if (isScoped) {
+                    const info = this.el.scopeOverlay.querySelector('.scope-info');
+                    if (info) {
+                        info.innerHTML = w.kind === 'kar98'
+                            ? '<span>KAR98K</span><span>ZOOM <b>4.5x</b></span><span>RANGE 300m</span>'
+                            : '<span>LONGBOW .50</span><span>ZOOM <b>6.0x</b></span><span>RANGE 400m</span>';
+                    }
+                }
                 this.el.crosshair.style.opacity = isScoped ? 0 : (1 - player.adsLerp * .7);
 
                 const slots = player.weapons || [];
@@ -6985,10 +7060,11 @@
                             killerName: (this.network.players[this.lastAttacker] && this.network.players[this.lastAttacker].name) || 'ENEMY',
                             victimId: this.network.myId,
                             victimName: this.network.myName,
-                            headshot: false,
+                            headshot: !!this.lastHitHeadshot,
                             deathPos: [this.player.pos.x, this.player.pos.y, this.player.pos.z]
                         });
                     }
+                    this.lastHitHeadshot = false;
                 } else {
                     this.state = 'OVER';
                     this.input.unlock();
@@ -6998,10 +7074,11 @@
                     this._openPanel('overPanel');
                 }
             }
-            triggerDomainExpansion(isOwner) {
+            triggerDomainExpansion(isOwner, center = null) {
                 if (this.domainActive) return;
                 this.domainActive = true;
                 this.domainOwner = isOwner;
+                this.domainCenter = center ? center.clone() : this.player.pos.clone();
                 this.domainTimer = 14.0;
                 this.domainSlashTimer = 0;
                 audio.domain();
@@ -7018,13 +7095,14 @@
                 floorRing.rotation.x = -Math.PI / 2;
                 floorRing.position.y = 0.15;
                 g.add(dome, floorRing);
-                g.position.copy(this.player.pos);
+                g.position.copy(this.domainCenter);
                 this.scene.add(g);
                 this.domainGroup = g;
             }
             endDomain() {
                 this.domainActive = false;
                 this.domainOwner = false;
+                this.domainCenter = null;
                 if (this.domainGroup) {
                     this.scene.remove(this.domainGroup);
                     this.domainGroup.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
@@ -7057,8 +7135,12 @@
                 const ov = document.getElementById('clashOverlay');
                 if (ov) ov.classList.remove('show');
                 const won = winnerId === (this.network && this.network.myId);
+                const winState = !won && this.network && this.network.players[winnerId] && this.network.players[winnerId].state;
+                const domainPos = won
+                    ? this.player.pos.clone()
+                    : (winState && winState.pos ? new THREE.Vector3(...winState.pos) : this.player.pos.clone());
                 this.ui.showCenterMsg(won ? 'DOMAIN DOMINANCE!' : 'DOMAIN SHATTERED!', '', 2500);
-                this.triggerDomainExpansion(won);
+                this.triggerDomainExpansion(won, domainPos);
             }
             _pause() {
                 if (this.state !== 'PLAYING') return;
@@ -7152,17 +7234,18 @@
                     if (this.domainActive) {
                         this.domainTimer -= dt;
                         this.domainSlashTimer -= dt;
+                        const dCenter = this.domainCenter || this.player.pos;
                         if (this.domainSlashTimer <= 0) {
                             this.domainSlashTimer = 0.22;
-                            const rPos = this.player.pos.clone().add(new THREE.Vector3(rand(-14, 14), rand(0.5, 4), rand(-14, 14)));
+                            const rPos = dCenter.clone().add(new THREE.Vector3(rand(-14, 14), rand(0.5, 4), rand(-14, 14)));
                             if (window.sukunaSlashVfx) window.sukunaSlashVfx(rPos, 'cleave');
                             if (this.domainOwner) {
-                                for (const bot of this.bots) if (bot.alive) this.damageBot(bot, 38, false, bot.pos.clone().add(new THREE.Vector3(0, 1, 0)));
+                                for (const bot of this.bots) if (bot.alive && bot.pos.distanceTo(dCenter) < 48) this.damageBot(bot, 38, false, bot.pos.clone().add(new THREE.Vector3(0, 1, 0)));
                                 if (this.isMultiplayer && !this.isCoop() && this.network) {
                                     for (const pid in this.network.players) {
                                         if (pid === this.network.myId) continue;
                                         const s = this.network.players[pid].state;
-                                        if (s && s.pos && s.alive !== false && new THREE.Vector3(...s.pos).distanceTo(this.player.pos) < 35) {
+                                        if (s && s.pos && s.alive !== false && new THREE.Vector3(...s.pos).distanceTo(dCenter) < 48) {
                                             this.network.broadcast({ type: 'HIT', targetId: pid, damage: 22, attackerId: this.network.myId, attackerName: this.network.myName });
                                         }
                                     }
