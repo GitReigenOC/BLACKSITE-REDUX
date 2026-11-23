@@ -1363,6 +1363,7 @@ class NetworkManager {
                     ? new THREE.Vector3(...this.players[data.attackerId].state.pos) : null;
                 this.game.lastAttacker = data.attackerId || 'Unknown';
                 this.game.lastAttackerName = data.attackerName || 'RIVAL';
+                this.game.lastAttackerWeapon = data.weaponName || 'ELIMINATED';
                 this.game.lastHitHeadshot = !!data.headshot;
                 const canDamage = !this.game.isCoop() || !data.attackerId || data.attackerId === 'bot';
                 const deflectNo = data.deflect || 0;
@@ -2259,47 +2260,170 @@ class World {
 function buildWeaponMesh(kind, camo = 'default', isFirstPerson = true) {
     const g = new THREE.Group();
     const camoTex = generateCamoTexture(camo);
-    const accentHex = CAMO_COLORS[camo] || 0xffdd44;
+    const isCustom = camo && camo !== 'default';
+    const accentHex = isCustom ? (CAMO_COLORS[camo] || 0xff7a1a) : 0xff7a1a;
 
+    // 1. Custom 3D Fire-Breathing Dragon Model for Firearms with 'dragon' camo
+    if (camo === 'dragon' && !['knife', 'katana', 'dismantle', 'cleave'].includes(kind)) {
+        const scaleMat = new THREE.MeshStandardMaterial({ color: 0x8b0000, metalness: 0.78, roughness: 0.24 });
+        const goldMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, metalness: 0.9, roughness: 0.16 });
+        const emberMat = new THREE.MeshStandardMaterial({ color: 0xff4500, emissive: 0xff3b00, emissiveIntensity: 3.4 });
+
+        const torso = new THREE.Mesh(new THREE.BoxGeometry(0.105, 0.135, 0.54), scaleMat);
+        torso.position.set(0, -0.02, -0.16);
+        const belly = new THREE.Mesh(new THREE.BoxGeometry(0.078, 0.048, 0.50), goldMat);
+        belly.position.set(0, -0.075, -0.16);
+
+        const headGroup = new THREE.Group();
+        headGroup.position.set(0, 0.03, -0.49);
+        const skull = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.10, 0.18), scaleMat);
+        const snout = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.06, 0.14), scaleMat);
+        snout.position.set(0, 0.01, -0.12);
+        const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.035, 0.13), goldMat);
+        jaw.position.set(0, -0.045, -0.11);
+        jaw.rotation.x = 0.22;
+
+        const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.014, 6, 6), emberMat);
+        eyeL.position.set(-0.048, 0.025, -0.04);
+        const eyeR = eyeL.clone();
+        eyeR.position.x = 0.048;
+
+        const hornL = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.16, 6), goldMat);
+        hornL.position.set(-0.038, 0.08, 0.04);
+        hornL.rotation.set(-0.6, 0, 0.22);
+        const hornR = hornL.clone();
+        hornR.position.x = 0.038;
+        hornR.rotation.z = -0.22;
+
+        const flameCore = new THREE.Mesh(new THREE.ConeGeometry(0.032, 0.14, 8), emberMat);
+        flameCore.rotation.x = -Math.PI / 2;
+        flameCore.position.set(0, -0.015, -0.21);
+        headGroup.add(skull, snout, jaw, eyeL, eyeR, hornL, hornR, flameCore);
+
+        const wingMat = new THREE.MeshStandardMaterial({
+            color: 0x3b0404, emissive: 0x440000, emissiveIntensity: 0.7, side: THREE.DoubleSide, roughness: 0.4
+        });
+        const wingL = new THREE.Mesh(new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(-0.05, 0.02, -0.10),
+            new THREE.Vector3(-0.24, 0.13, -0.22),
+            new THREE.Vector3(-0.20, 0.05, 0.08)
+        ]), wingMat);
+        wingL.geometry.computeVertexNormals();
+
+        const wingR = new THREE.Mesh(new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(0.05, 0.02, -0.10),
+            new THREE.Vector3(0.24, 0.13, -0.22),
+            new THREE.Vector3(0.20, 0.05, 0.08)
+        ]), wingMat);
+        wingR.geometry.computeVertexNormals();
+
+        for (let i = 0; i < 5; i++) {
+            const spike = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.06, 4), goldMat);
+            spike.position.set(0, 0.07, -0.38 + i * 0.11);
+            spike.rotation.x = -0.35;
+            g.add(spike);
+        }
+
+        const tail = new THREE.Mesh(new THREE.ConeGeometry(0.036, 0.22, 6), scaleMat);
+        tail.rotation.x = Math.PI / 2 + 0.35;
+        tail.position.set(0, -0.085, 0.18);
+
+        g.add(torso, belly, headGroup, wingL, wingR, tail);
+        if (isFirstPerson) g.traverse(o => { if (o.isMesh) o.castShadow = false; });
+        return g;
+    }
+
+    // 2. Curved 7-Segment Redliner Katana
+    if (kind === 'katana') {
+        const bladeMat = new THREE.MeshStandardMaterial({
+            color: isCustom ? 0xffffff : 0xdce4ee,
+            map: isCustom ? camoTex : null,
+            metalness: 0.94,
+            roughness: 0.14
+        });
+        const edgeColor = isCustom ? (CAMO_COLORS[camo] || 0xff1e38) : 0xff1e38;
+        const edgeMat = new THREE.MeshStandardMaterial({
+            color: edgeColor, emissive: edgeColor, emissiveIntensity: 3.2, metalness: 0.5, roughness: 0.2
+        });
+        const guardMat = new THREE.MeshStandardMaterial({ color: 0x161a20, metalness: 0.88, roughness: 0.25 });
+        const goldAccent = new THREE.MeshStandardMaterial({ color: 0xd49b35, metalness: 0.9, roughness: 0.2 });
+        const wrapMat = new THREE.MeshStandardMaterial({ color: 0x12141a, roughness: 0.85 });
+        const silkMat = new THREE.MeshStandardMaterial({ color: 0x9e1124, roughness: 0.7 });
+
+        const tsuka = new THREE.Mesh(new THREE.CylinderGeometry(0.017, 0.02, 0.34, 8), wrapMat);
+        tsuka.rotation.x = Math.PI / 2;
+        tsuka.position.set(0, 0, 0.17);
+        g.add(tsuka);
+
+        for (let i = 0; i < 6; i++) {
+            const diamond = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.012, 0.024), silkMat);
+            diamond.position.set(0, 0, 0.05 + i * 0.048);
+            diamond.rotation.y = Math.PI / 4;
+            g.add(diamond);
+        }
+
+        const kashira = new THREE.Mesh(new THREE.CylinderGeometry(0.021, 0.019, 0.026, 8), goldAccent);
+        kashira.rotation.x = Math.PI / 2;
+        kashira.position.set(0, 0, 0.345);
+
+        const tsuba = new THREE.Mesh(new THREE.CylinderGeometry(0.056, 0.056, 0.014, 16), guardMat);
+        tsuba.rotation.x = Math.PI / 2;
+        const tsubaRim = new THREE.Mesh(new THREE.TorusGeometry(0.056, 0.004, 6, 18), goldAccent);
+        const habaki = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.038, 0.042), goldAccent);
+        habaki.position.set(0, 0.004, -0.024);
+        g.add(kashira, tsuba, tsubaRim, habaki);
+
+        const segs = 7, segLen = 0.155;
+        for (let i = 0; i < segs; i++) {
+            const t = i / segs;
+            const curveY = t * t * 0.075;
+            const curveAngle = t * 0.16;
+            const taper = 1 - t * 0.24;
+
+            const spine = new THREE.Mesh(new THREE.BoxGeometry(0.011 * taper, 0.026 * taper, segLen + 0.006), bladeMat);
+            spine.position.set(0, 0.008 + curveY, -0.095 - i * segLen);
+            spine.rotation.x = curveAngle;
+
+            const edge = new THREE.Mesh(new THREE.BoxGeometry(0.005 * taper, 0.008 * taper, segLen + 0.006), edgeMat);
+            edge.position.set(0, -0.008 + curveY, -0.095 - i * segLen);
+            edge.rotation.x = curveAngle;
+            g.add(spine, edge);
+        }
+
+        const tip = new THREE.Mesh(new THREE.ConeGeometry(0.017, 0.14, 4), edgeMat);
+        tip.rotation.x = -Math.PI / 2 + 0.18;
+        tip.position.set(0, 0.082, -0.095 - segs * segLen - 0.03);
+        g.add(tip);
+
+        if (isFirstPerson) g.traverse(o => { if (o.isMesh) o.castShadow = false; });
+        return g;
+    }
+
+    // 3. Tactical Firearms, Launcher, Knife & Sukuna Orbs
     const bodyMat = new THREE.MeshStandardMaterial({
-        map: camoTex,
-        color: camo === 'default' ? 0x2c3542 : 0xffffff,
-        metalness: 0.65,
-        roughness: 0.35
+        map: isCustom ? camoTex : null,
+        color: isCustom ? 0xffffff : 0x262f3c,
+        metalness: isCustom ? 0.65 : 0.82,
+        roughness: isCustom ? 0.34 : 0.26
     });
-    const darkMetal = new THREE.MeshStandardMaterial({ color: 0x12161c, metalness: 0.85, roughness: 0.25 });
+    const darkMetal = new THREE.MeshStandardMaterial({ color: 0x10141a, metalness: 0.85, roughness: 0.25 });
     const glowMat = new THREE.MeshStandardMaterial({
         color: accentHex,
         emissive: accentHex,
-        emissiveIntensity: camo === 'default' ? 0.6 : 2.3
+        emissiveIntensity: isCustom ? 2.4 : 1.5
     });
-    const woodMat = new THREE.MeshStandardMaterial({ color: 0x5c3419, roughness: 0.72, metalness: 0.1 });
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x6b3a1a, roughness: 0.72, metalness: 0.1 });
 
     if (kind === 'knife') {
-        const handle = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.045, 0.16), darkMetal);
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.026, 0.007, 8, 16), glowMat);
-        ring.position.set(0, 0, 0.095);
-        const blade = new THREE.Mesh(new THREE.ConeGeometry(0.028, 0.22, 4), bodyMat);
-        blade.rotation.x = -Math.PI / 2 - 0.18;
-        blade.position.set(0, 0.015, -0.17);
-        const edge = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.012, 0.18), glowMat);
-        edge.position.set(0, 0.025, -0.15);
+        const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.021, 0.15, 8), darkMetal);
+        handle.rotation.x = Math.PI / 2;
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.025, 0.006, 8, 16), glowMat);
+        ring.position.set(0, 0, 0.09);
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.034, 0.20), bodyMat);
+        blade.position.set(0, 0.005, -0.16);
+        const edge = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.009, 0.19), glowMat);
+        edge.position.set(0, 0.02, -0.16);
         g.add(handle, ring, blade, edge);
-    } else if (kind === 'katana') {
-        const tsuka = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.022, 0.28, 8), darkMetal);
-        tsuka.rotation.x = Math.PI / 2;
-        tsuka.position.z = 0.16;
-        const tsuba = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.014, 16), glowMat);
-        tsuba.rotation.x = Math.PI / 2;
-        tsuba.position.z = 0.015;
-        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.038, 0.92), bodyMat);
-        blade.position.set(0, 0.006, -0.45);
-        const hamon = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.008, 0.91), glowMat);
-        hamon.position.set(0, -0.012, -0.45);
-        const tip = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.09, 4), bodyMat);
-        tip.rotation.x = -Math.PI / 2;
-        tip.position.set(0, 0.006, -0.95);
-        g.add(tsuka, tsuba, blade, hamon, tip);
     } else if (kind === 'dismantle' || kind === 'cleave') {
         const orb = new THREE.Mesh(new THREE.OctahedronGeometry(0.06, 1), glowMat);
         g.add(orb);
@@ -2311,13 +2435,11 @@ function buildWeaponMesh(kind, camo = 'default', isFirstPerson = true) {
         const magTube = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.46, 12), darkMetal);
         magTube.rotation.x = Math.PI / 2;
         magTube.position.set(0, -0.002, -0.39);
-        const pump = new THREE.Mesh(new THREE.BoxGeometry(0.068, 0.065, 0.18), bodyMat);
+        const pump = new THREE.Mesh(new THREE.BoxGeometry(0.068, 0.065, 0.18), glowMat);
         pump.position.set(0, -0.005, -0.32);
         const stock = new THREE.Mesh(new THREE.BoxGeometry(0.062, 0.12, 0.26), darkMetal);
         stock.position.set(0, -0.025, 0.30);
-        const sight = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.02, 0.04), glowMat);
-        sight.position.set(0, 0.065, -0.64);
-        g.add(receiver, barrel, magTube, pump, stock, sight);
+        g.add(receiver, barrel, magTube, pump, stock);
     } else if (kind === 'sniper' || kind === 'kar98') {
         const isKar = kind === 'kar98';
         const chassis = new THREE.Mesh(new THREE.BoxGeometry(0.068, 0.095, 0.52), isKar ? woodMat : bodyMat);
@@ -2341,9 +2463,6 @@ function buildWeaponMesh(kind, camo = 'default', isFirstPerson = true) {
         const frontBell = new THREE.Mesh(new THREE.CylinderGeometry(0.086, 0.072, 0.12, 16), darkMetal);
         frontBell.rotation.x = Math.PI / 2;
         frontBell.position.z = -0.48;
-        const rearBell = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.09, 0.12, 16), darkMetal);
-        rearBell.rotation.x = Math.PI / 2;
-        rearBell.position.z = 0.48;
         const warhead = new THREE.Mesh(new THREE.ConeGeometry(0.056, 0.16, 12), glowMat);
         warhead.rotation.x = -Math.PI / 2;
         warhead.position.z = -0.54;
@@ -2351,7 +2470,7 @@ function buildWeaponMesh(kind, camo = 'default', isFirstPerson = true) {
         grip.position.set(0, -0.11, -0.12);
         const optic = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.14), glowMat);
         optic.position.set(-0.085, 0.04, -0.10);
-        g.add(tube, frontBell, rearBell, warhead, grip, optic);
+        g.add(tube, frontBell, warhead, grip, optic);
     } else {
         const isSmg = kind === 'smg';
         const isLmg = kind === 'lmg';
@@ -2364,7 +2483,7 @@ function buildWeaponMesh(kind, camo = 'default', isFirstPerson = true) {
         barrel.position.set(0, 0.025, -len / 2 - barrelLen / 2);
 
         const mag = isLmg
-            ? new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.14, 0.13), darkMetal)
+            ? new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.14, 0.13), glowMat)
             : new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.18, 0.075), darkMetal);
         mag.position.set(isLmg ? 0.03 : 0, -0.11, -0.05);
         if (!isLmg) mag.rotation.x = isAk ? 0.28 : 0.14;
@@ -2381,68 +2500,6 @@ function buildWeaponMesh(kind, camo = 'default', isFirstPerson = true) {
         dot.position.set(0, 0.078, 0.02);
 
         g.add(receiver, barrel, mag, stock, railGlow, optic, dot);
-    }
-
-    // Custom 3D Fire-Breathing Dragon Sculpt for 'dragon' camo
-    if (camo === 'dragon' && !['dismantle', 'cleave'].includes(kind)) {
-        const scaleMat = new THREE.MeshStandardMaterial({ color: 0x2b0704, metalness: 0.75, roughness: 0.28 });
-        const fireMat = new THREE.MeshStandardMaterial({ color: 0xff4500, emissive: 0xff5500, emissiveIntensity: 3.0 });
-        const goldHornMat = new THREE.MeshStandardMaterial({ color: 0xffaa22, emissive: 0xff5500, emissiveIntensity: 1.4, metalness: 0.85, roughness: 0.2 });
-
-        if (kind === 'knife' || kind === 'katana') {
-            const zPommel = kind === 'katana' ? 0.30 : 0.09;
-            const head = new THREE.Mesh(new THREE.BoxGeometry(0.048, 0.048, 0.085), scaleMat);
-            head.position.set(0, 0.01, zPommel);
-            const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.012, 0.016), fireMat);
-            eyeL.position.set(-0.024, 0.018, zPommel - 0.015);
-            const eyeR = eyeL.clone(); eyeR.position.x = 0.024;
-            const hornL = new THREE.Mesh(new THREE.ConeGeometry(0.011, 0.09, 5), goldHornMat);
-            hornL.position.set(-0.022, 0.042, zPommel + 0.03);
-            hornL.rotation.x = 0.75;
-            const hornR = hornL.clone(); hornR.position.x = 0.022;
-            g.add(head, eyeL, eyeR, hornL, hornR);
-        } else {
-            const snoutZ = kind === 'rocket' ? -0.44 : (kind === 'sniper' || kind === 'kar98') ? -0.52 : -0.34;
-            const upperJaw = new THREE.Mesh(new THREE.BoxGeometry(0.092, 0.056, 0.22), scaleMat);
-            upperJaw.position.set(0, 0.045, snoutZ);
-            const lowerJaw = new THREE.Mesh(new THREE.BoxGeometry(0.078, 0.03, 0.19), scaleMat);
-            lowerJaw.position.set(0, -0.005, snoutZ + 0.01);
-            lowerJaw.rotation.x = 0.14;
-            const mawGlow = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.025, 0.15), fireMat);
-            mawGlow.position.set(0, 0.018, snoutZ - 0.02);
-
-            const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.016, 0.028), fireMat);
-            eyeL.position.set(-0.046, 0.056, snoutZ + 0.03);
-            const eyeR = eyeL.clone(); eyeR.position.x = 0.046;
-
-            const hornL = new THREE.Mesh(new THREE.ConeGeometry(0.016, 0.18, 6), goldHornMat);
-            hornL.position.set(-0.038, 0.098, snoutZ + 0.14);
-            hornL.rotation.x = -0.85;
-            hornL.rotation.z = 0.22;
-            const hornR = hornL.clone();
-            hornR.position.x = 0.038;
-            hornR.rotation.z = -0.22;
-
-            // Dorsal dragon spines
-            for (let s = 0; s < 4; s++) {
-                const spine = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.055, 4), fireMat);
-                spine.position.set(0, 0.082, snoutZ + 0.18 + s * 0.085);
-                spine.rotation.x = -0.35;
-                g.add(spine);
-            }
-
-            // Swept wing shrouds
-            const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.012, 0.18), scaleMat);
-            wingL.position.set(-0.068, 0.03, snoutZ + 0.16);
-            wingL.rotation.z = 0.35;
-            wingL.rotation.y = -0.25;
-            const wingR = wingL.clone();
-            wingR.position.x = 0.068;
-            wingR.rotation.z = -0.35;
-            wingR.rotation.y = 0.25;
-
-            g.add(upperJaw, lowerJaw, mawGlow, eyeL, eyeR, hornL, hornR, wingL, wingR);
-        }
     }
 
     if (isFirstPerson) {
@@ -2637,84 +2694,167 @@ class EffectsSystem {
         const dir = _v1.copy(to).sub(from);
         const len = dir.length();
         if (len < 0.05) return;
-        const geo = new THREE.CylinderGeometry(0.018, 0.018, len, 6);
-        geo.rotateX(Math.PI / 2);
-        const mat = new THREE.MeshBasicMaterial({
-            color: colorHex,
-            transparent: true,
-            opacity: 0.9,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
+
+        const group = new THREE.Group();
+        const outerGeo = new THREE.CylinderGeometry(0.022, 0.022, len, 6);
+        outerGeo.rotateX(Math.PI / 2);
+        const outerMat = new THREE.MeshBasicMaterial({
+            color: colorHex, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false
         });
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.copy(from).lerp(to, 0.5);
-        mesh.lookAt(to);
-        this.scene.add(mesh);
-        this.items.push({ mesh, life: 0.11, maxLife: 0.11, disposeGeo: true });
+        const coreGeo = new THREE.CylinderGeometry(0.008, 0.008, len, 5);
+        coreGeo.rotateX(Math.PI / 2);
+        const coreMat = new THREE.MeshBasicMaterial({
+            color: 0xffffff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false
+        });
+
+        group.add(new THREE.Mesh(outerGeo, outerMat), new THREE.Mesh(coreGeo, coreMat));
+        group.position.copy(from).lerp(to, 0.5);
+        group.lookAt(to);
+        this.scene.add(group);
+        this.items.push({ mesh: group, life: 0.12, maxLife: 0.12, disposeGeo: true });
+    }
+
+    muzzleFlash(pos, colorHex = 0xffb347, ejectCasing = true) {
+        const g = new THREE.Group();
+        g.position.copy(pos);
+
+        const core = new THREE.Mesh(
+            new THREE.SphereGeometry(0.14, 8, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false })
+        );
+        const starMat = new THREE.MeshBasicMaterial({
+            color: colorHex, transparent: true, opacity: 0.85, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false
+        });
+        const s1 = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.09), starMat);
+        const s2 = new THREE.Mesh(new THREE.PlaneGeometry(0.09, 0.55), starMat);
+        s1.rotation.z = rand(0, Math.PI);
+        s2.rotation.z = s1.rotation.z;
+        g.add(core, s1, s2);
+        this.scene.add(g);
+        this.items.push({ mesh: g, life: 0.055, maxLife: 0.055, disposeGeo: true });
+
+        if (ejectCasing) {
+            const casing = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.011, 0.011, 0.042, 6),
+                new THREE.MeshStandardMaterial({ color: 0xe6b84c, metalness: 0.9, roughness: 0.25 })
+            );
+            casing.position.copy(pos);
+            this.scene.add(casing);
+            this.items.push({
+                mesh: casing,
+                vel: new THREE.Vector3(rand(1.2, 2.5), rand(1.6, 2.8), rand(-0.6, 0.6)),
+                gravity: 16,
+                life: 0.55,
+                maxLife: 0.55,
+                disposeGeo: true
+            });
+        }
     }
 
     impact(pos, normal = new THREE.Vector3(0, 1, 0), isBlood = false) {
-        const count = isBlood ? 7 : 5;
-        const col = isBlood ? 0xff1a2e : 0xffaa33;
+        const count = isBlood ? 10 : 8;
+        const col = isBlood ? 0xff1a2e : 0xffbb44;
         for (let i = 0; i < count; i++) {
             const m = new THREE.Mesh(
-                new THREE.BoxGeometry(0.06, 0.06, 0.06),
-                new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 1 })
+                new THREE.BoxGeometry(0.065, 0.065, 0.11),
+                new THREE.MeshBasicMaterial({
+                    color: i % 3 === 0 ? 0xffffff : col,
+                    transparent: true,
+                    opacity: 1,
+                    blending: isBlood ? THREE.NormalBlending : THREE.AdditiveBlending,
+                    depthWrite: false
+                })
             );
             m.position.copy(pos);
             this.scene.add(m);
             const vel = new THREE.Vector3(
-                normal.x * rand(1.5, 4.5) + rand(-2.5, 2.5),
-                Math.abs(normal.y) * rand(1.5, 4.5) + rand(0.5, 3.0),
-                normal.z * rand(1.5, 4.5) + rand(-2.5, 2.5)
+                normal.x * rand(1.8, 5.2) + rand(-3.0, 3.0),
+                Math.abs(normal.y) * rand(1.8, 5.2) + rand(0.6, 3.4),
+                normal.z * rand(1.8, 5.2) + rand(-3.0, 3.0)
             );
-            this.items.push({ mesh: m, vel, gravity: 14, life: 0.35, maxLife: 0.35, disposeGeo: true });
+            this.items.push({ mesh: m, vel, gravity: 15, life: 0.36, maxLife: 0.36, disposeGeo: true });
         }
     }
 
     explosion(pos, radius = 5.5) {
+        this.impact(pos, new THREE.Vector3(0, 1, 0), false);
         const sphere = new THREE.Mesh(
-            new THREE.SphereGeometry(0.5, 16, 16),
+            new THREE.SphereGeometry(0.55, 16, 16),
             new THREE.MeshBasicMaterial({
                 color: 0xff6a1a,
                 transparent: true,
-                opacity: 0.92,
+                opacity: 0.94,
                 blending: THREE.AdditiveBlending,
                 depthWrite: false
             })
         );
         sphere.position.copy(pos);
         this.scene.add(sphere);
-        this.items.push({
-            mesh: sphere,
-            life: 0.42,
-            maxLife: 0.42,
-            scaleTo: radius * 1.4,
-            disposeGeo: true
-        });
-    }
+        this.items.push({ mesh: sphere, life: 0.42, maxLife: 0.42, scaleTo: radius * 1.45, disposeGeo: true });
 
-    katanaSlashArc(origin, dir, isSuper = false, colorHex = 0xff2a3c) {
-        const ring = new THREE.Mesh(
-            new THREE.TorusGeometry(isSuper ? 1.85 : 1.25, isSuper ? 0.09 : 0.05, 8, 24, Math.PI * 1.15),
+        const shockwave = new THREE.Mesh(
+            new THREE.RingGeometry(0.35, 0.72, 28),
             new THREE.MeshBasicMaterial({
-                color: isSuper ? 0xff1e38 : (colorHex || 0x40d0ff),
+                color: 0xffd2a6,
+                side: THREE.DoubleSide,
                 transparent: true,
-                opacity: 0.95,
+                opacity: 0.9,
                 blending: THREE.AdditiveBlending,
                 depthWrite: false
             })
         );
-        ring.position.copy(origin).addScaledVector(dir, 1.15);
-        ring.lookAt(origin.clone().add(dir));
-        ring.rotateZ(rand(-0.5, 0.5));
-        this.scene.add(ring);
-        this.items.push({ mesh: ring, life: 0.22, maxLife: 0.22, scaleTo: 1.45, disposeGeo: true });
+        shockwave.rotation.x = -Math.PI / 2;
+        shockwave.position.copy(pos).add(new THREE.Vector3(0, 0.15, 0));
+        this.scene.add(shockwave);
+        this.items.push({ mesh: shockwave, life: 0.36, maxLife: 0.36, scaleTo: radius * 1.85, disposeGeo: true });
+
+        for (let i = 0; i < 8; i++) {
+            const smoke = new THREE.Mesh(
+                new THREE.DodecahedronGeometry(rand(0.28, 0.52), 0),
+                new THREE.MeshBasicMaterial({ color: 0x1a1e24, transparent: true, opacity: 0.65, depthWrite: false })
+            );
+            smoke.position.copy(pos).add(new THREE.Vector3(rand(-0.7, 0.7), rand(0.1, 0.6), rand(-0.7, 0.7)));
+            this.scene.add(smoke);
+            this.items.push({
+                mesh: smoke,
+                vel: new THREE.Vector3(rand(-2, 2), rand(2.5, 5.2), rand(-2, 2)),
+                gravity: -1.8,
+                life: 0.75,
+                maxLife: 0.75,
+                scaleTo: 2.2,
+                disposeGeo: true
+            });
+        }
+    }
+
+    katanaSlashArc(origin, dir, isSuper = false, colorHex = 0xff2a3c) {
+        const group = new THREE.Group();
+        const r = isSuper ? 1.85 : 1.3;
+        const tube = isSuper ? 0.085 : 0.048;
+        const outer = new THREE.Mesh(
+            new THREE.TorusGeometry(r, tube, 8, 24, Math.PI * 1.1),
+            new THREE.MeshBasicMaterial({
+                color: isSuper ? 0xff1e38 : (colorHex || 0x40d0ff),
+                transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false
+            })
+        );
+        const core = new THREE.Mesh(
+            new THREE.TorusGeometry(r * 0.96, tube * 0.42, 6, 20, Math.PI * 0.95),
+            new THREE.MeshBasicMaterial({
+                color: 0xffffff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false
+            })
+        );
+        group.add(outer, core);
+        group.position.copy(origin).addScaledVector(dir, 1.2);
+        group.lookAt(origin.clone().add(dir));
+        group.rotateZ(rand(-0.55, 0.55));
+        this.scene.add(group);
+        this.items.push({ mesh: group, life: 0.22, maxLife: 0.22, scaleTo: 1.45, disposeGeo: true });
     }
 
     katanaParry(pos) {
         const flash = new THREE.Mesh(
-            new THREE.RingGeometry(0.2, 1.4, 24),
+            new THREE.RingGeometry(0.25, 1.5, 28),
             new THREE.MeshBasicMaterial({
                 color: 0xffe875,
                 side: THREE.DoubleSide,
@@ -2727,7 +2867,7 @@ class EffectsSystem {
         flash.position.copy(pos);
         if (window.game && window.game.camera) flash.lookAt(window.game.camera.position);
         this.scene.add(flash);
-        this.items.push({ mesh: flash, life: 0.25, maxLife: 0.25, scaleTo: 1.7, disposeGeo: true });
+        this.items.push({ mesh: flash, life: 0.28, maxLife: 0.28, scaleTo: 1.85, disposeGeo: true });
     }
 
     blinkTrail(from, to) {
@@ -3592,6 +3732,19 @@ class Player {
         }
     }
 
+    _intersectRaySphere(origin, dir, center, radius, maxDist) {
+        const oc = origin.clone().sub(center);
+        const b = oc.dot(dir);
+        const c = oc.dot(oc) - radius * radius;
+        const disc = b * b - c;
+        if (disc < 0) return null;
+        const sqrtD = Math.sqrt(disc);
+        const t1 = -b - sqrtD;
+        const t2 = -b + sqrtD;
+        const t = t1 >= 0 ? t1 : (t2 >= 0 ? t2 : -1);
+        return (t >= 0 && t <= maxDist) ? t : null;
+    }
+
     fireWeapon() {
         const w = this.currentWeapon;
         if (!w) return;
@@ -3636,9 +3789,9 @@ class Player {
                     if (!b.alive) continue;
                     const toBot = b.pos.clone().add(new THREE.Vector3(0, 1.1, 0)).sub(eye);
                     const dist = toBot.length();
-                    if (dist <= w.range) {
+                    if (dist <= w.range + 0.35) {
                         toBot.normalize();
-                        if (lookDir.dot(toBot) > 0.55) {
+                        if (lookDir.dot(toBot) > 0.45) {
                             const botFwd = new THREE.Vector3(-Math.sin(b.yaw), 0, -Math.cos(b.yaw));
                             const backstab = lookDir.dot(botFwd) > 0.65;
                             const finalDmg = backstab ? dmg * (w.backstabMult || 3) : dmg;
@@ -3649,22 +3802,29 @@ class Player {
                 }
             }
 
-            if (this.game.isMultiplayer) {
+            if (this.game.isMultiplayer && !this.game.isCoop()) {
                 for (const id in this.game.net.players) {
                     if (id === this.game.net.myId) continue;
                     const st = this.game.net.players[id].state;
-                    if (!st || !st.pos || st.alive === false) continue;
-                    const rPos = new THREE.Vector3(...st.pos).add(new THREE.Vector3(0, 1.1, 0));
+                    if (!st || st.alive === false) continue;
+                    const rMesh = this.game.remoteMeshes?.[id];
+                    const basePos = rMesh ? rMesh.position.clone() : (st.pos ? new THREE.Vector3(...st.pos) : null);
+                    if (!basePos) continue;
+                    const rPos = basePos.add(new THREE.Vector3(0, 1.15, 0));
                     const toR = rPos.clone().sub(eye);
                     const dist = toR.length();
-                    if (dist <= w.range && lookDir.dot(toR.normalize()) > 0.55) {
+                    if (dist <= w.range + 0.5 && lookDir.dot(toR.normalize()) > 0.42) {
                         const rFwd = new THREE.Vector3(-Math.sin(st.yaw || 0), 0, -Math.cos(st.yaw || 0));
                         const backstab = lookDir.dot(rFwd) > 0.65;
                         const finalDmg = backstab ? dmg * (w.backstabMult || 3) : dmg;
                         this.game.damageRemotePlayer(id, finalDmg, backstab || isSuper, true);
+                        this.game.effects.impact(rPos, lookDir.clone().negate(), true);
                         hitAnything = true;
                     }
                 }
+            }
+
+            if (this.game.isMultiplayer) {
                 const reachPt = eye.clone().addScaledVector(lookDir, w.range);
                 this.game.net.broadcast({
                     type: 'SHOOT',
@@ -3704,10 +3864,11 @@ class Player {
             return;
         }
 
-        // Apply Recoil
+        // Apply Recoil & Muzzle Flash
         this.recoilPitch += w.recoil * 0.011 * (1 - this.ads * 0.35);
         this.recoilYaw += rand(-0.005, 0.005) * w.recoil;
         audio.shoot(w.sound);
+        this.game.effects.muzzleFlash(muzzle, tracerColor, !w.projectile);
 
         // 3. Rocket Launcher
         if (w.projectile) {
@@ -3753,7 +3914,7 @@ class Player {
 
             // World geometry & explosive barrels
             if (this.game.world && this.game.world.meshes.length) {
-                const worldHits = ray.intersectObjects(this.game.world.meshes, false);
+                const worldHits = ray.intersectObjects(this.game.world.meshes, true);
                 if (worldHits.length > 0 && worldHits[0].distance < closestDist) {
                     closestDist = worldHits[0].distance;
                     hitPoint.copy(worldHits[0].point);
@@ -3766,6 +3927,7 @@ class Player {
             if (this.game.bots) {
                 for (const b of this.game.bots) {
                     if (!b.alive || !b.mesh) continue;
+                    b.mesh.updateMatrixWorld(true);
                     const hits = ray.intersectObjects(b.mesh.children, true);
                     if (hits.length > 0 && hits[0].distance < closestDist) {
                         closestDist = hits[0].distance;
@@ -3778,19 +3940,65 @@ class Player {
                 }
             }
 
-            // Remote Multiplayer Avatars
-            if (this.game.isMultiplayer && this.game.remoteMeshes) {
-                for (const id in this.game.remoteMeshes) {
-                    const rMesh = this.game.remoteMeshes[id];
-                    if (!rMesh) continue;
-                    const hits = ray.intersectObjects(rMesh.children, true);
-                    if (hits.length > 0 && hits[0].distance < closestDist) {
-                        closestDist = hits[0].distance;
-                        hitPoint.copy(hits[0].point);
+            // Remote Multiplayer Avatars (PVP & 1V1): Force matrixWorld update + Lag-Compensated Hit Spheres
+            if (this.game.isMultiplayer && !this.game.isCoop() && this.game.net?.players) {
+                for (const id in this.game.net.players) {
+                    if (id === this.game.net.myId) continue;
+                    const st = this.game.net.players[id]?.state;
+                    if (!st || st.alive === false) continue;
+
+                    const rMesh = this.game.remoteMeshes?.[id];
+                    if (rMesh) {
+                        rMesh.updateMatrixWorld(true);
+                        const hits = ray.intersectObjects(rMesh.children, true);
+                        if (hits.length > 0 && hits[0].distance < closestDist) {
+                            closestDist = hits[0].distance;
+                            hitPoint.copy(hits[0].point);
+                            hitRemoteId = id;
+                            hitBot = null;
+                            hitWorldObj = null;
+                            hitZone = hits[0].object.userData.hitZone || 'torso';
+                            continue;
+                        }
+                    }
+
+                    // Multi-sphere body check prevents limb-gap misses and compensates WebRTC interpolation
+                    const basePos = rMesh ? rMesh.position.clone() : (st.pos ? new THREE.Vector3(...st.pos) : null);
+                    if (!basePos) continue;
+
+                    const headCenter = basePos.clone().add(new THREE.Vector3(0, 1.68, 0));
+                    const hDist = this._intersectRaySphere(eye, dir, headCenter, 0.34, closestDist);
+                    if (hDist !== null && hDist < closestDist) {
+                        closestDist = hDist;
+                        hitPoint.copy(eye).addScaledVector(dir, hDist);
                         hitRemoteId = id;
                         hitBot = null;
                         hitWorldObj = null;
-                        hitZone = hits[0].object.userData.hitZone || 'torso';
+                        hitZone = 'head';
+                        continue;
+                    }
+
+                    const torsoCenter = basePos.clone().add(new THREE.Vector3(0, 1.12, 0));
+                    const tDist = this._intersectRaySphere(eye, dir, torsoCenter, 0.48, closestDist);
+                    if (tDist !== null && tDist < closestDist) {
+                        closestDist = tDist;
+                        hitPoint.copy(eye).addScaledVector(dir, tDist);
+                        hitRemoteId = id;
+                        hitBot = null;
+                        hitWorldObj = null;
+                        hitZone = 'torso';
+                        continue;
+                    }
+
+                    const legsCenter = basePos.clone().add(new THREE.Vector3(0, 0.48, 0));
+                    const lDist = this._intersectRaySphere(eye, dir, legsCenter, 0.44, closestDist);
+                    if (lDist !== null && lDist < closestDist) {
+                        closestDist = lDist;
+                        hitPoint.copy(eye).addScaledVector(dir, lDist);
+                        hitRemoteId = id;
+                        hitBot = null;
+                        hitWorldObj = null;
+                        hitZone = 'limb';
                     }
                 }
             }
@@ -4683,7 +4891,7 @@ class UIManager {
 
     updateSlotNames(weapons) {
         weapons.forEach((w, i) => {
-            const el = document.getElementById(`slot${i + 1}`) || document.querySelector(`[data-hud-slot="${i}"]`);
+            const el = document.getElementById(`slot${i}`) || document.querySelector(`[data-hud-slot="${i}"]`);
             if (el) el.textContent = `[${i + 1}] ${w.shortName}`;
         });
     }
@@ -4742,34 +4950,45 @@ class UIManager {
     updateHUD(game) {
         const p = game.player;
         if (!p) return;
-        const hpEl = document.getElementById('hpVal') || document.getElementById('healthVal');
-        const hpBar = document.getElementById('hpBar') || document.getElementById('healthBar');
+
+        const hpEl = document.getElementById('hpVal');
+        const hpFill = document.getElementById('hpFill');
         const shEl = document.getElementById('shieldVal');
-        const ammoEl = document.getElementById('ammoVal');
-        const resEl = document.getElementById('reserveVal');
+        const shFill = document.getElementById('shieldFill');
+        const ammoCur = document.getElementById('ammoCur');
+        const ammoRes = document.getElementById('ammoRes');
         const wNameEl = document.getElementById('weaponName');
         const waveEl = document.getElementById('waveVal');
-        const killsEl = document.getElementById('killsVal');
-        const ptsEl = document.getElementById('hudPoints');
+        const enemiesEl = document.getElementById('enemiesVal');
+        const scoreEl = document.getElementById('scoreVal');
+        const speedEl = document.getElementById('speedVal');
+        const medEl = document.getElementById('medkitCount');
+        const flashEl = document.getElementById('flashbangCount');
 
         if (hpEl) hpEl.textContent = Math.ceil(p.health);
-        if (hpBar) hpBar.style.width = `${clamp((p.health / p.maxHealth) * 100, 0, 100)}%`;
+        if (hpFill) hpFill.style.width = `${clamp((p.health / p.maxHealth) * 100, 0, 100)}%`;
         if (shEl) shEl.textContent = Math.ceil(p.shield);
+        if (shFill) shFill.style.width = `${clamp(p.shield, 0, 100)}%`;
 
         const w = p.currentWeapon;
         if (w) {
-            if (ammoEl) ammoEl.textContent = (w.melee || w.kind === 'dismantle') ? '∞' : w.ammo;
-            if (resEl) resEl.textContent = (w.melee || w.kind === 'dismantle') ? '∞' : w.reserveAmmo;
+            const inf = w.melee || w.kind === 'dismantle';
+            if (ammoCur) ammoCur.textContent = inf ? '∞' : w.ammo;
+            if (ammoRes) ammoRes.textContent = inf ? '/ ∞' : `/ ${w.reserveAmmo}`;
             if (wNameEl) wNameEl.textContent = w.name;
         }
-        if (waveEl) waveEl.textContent = game.mode === 'WAVE' ? `WAVE ${game.wave}` : game.mode;
-        if (killsEl) killsEl.textContent = game.kills;
-        if (ptsEl) ptsEl.textContent = SaveSystem.data.points;
-    }
 
-    renderPreviews(dt) {
-        if (this.shopPreview) this.shopPreview.render(dt);
-        if (this.menuOperatorPreview) this.menuOperatorPreview.render(dt);
+        for (let i = 0; i < 4; i++) {
+            const slotEl = document.getElementById(`slot${i}`);
+            if (slotEl) slotEl.classList.toggle('active', p.currentSlot === i);
+        }
+
+        if (waveEl) waveEl.textContent = game.mode === 'WAVE' ? String(game.wave).padStart(2, '0') : game.mode;
+        if (enemiesEl) enemiesEl.textContent = game.bots ? game.bots.filter(b => b.alive).length : 0;
+        if (scoreEl) scoreEl.textContent = game.kills;
+        if (speedEl && p.vel) speedEl.textContent = Math.round(Math.hypot(p.vel.x, p.vel.z) * 10);
+        if (medEl) medEl.textContent = p.medkits ?? 0;
+        if (flashEl) flashEl.textContent = p.flashbangs ?? 0;
     }
 }
 
@@ -5058,6 +5277,7 @@ class Game {
             damage: dmg,
             headshot,
             isMelee,
+            weaponName: this.player?.currentWeapon?.name || 'ELIMINATED',
             attackerId: this.net.myId,
             attackerName: this.net.myName
         });
@@ -5130,6 +5350,8 @@ class Game {
 
     onPlayerDied() {
         this.input.unlock();
+        clearInterval(this._respawnInterval);
+
         if (this.isMultiplayer) {
             this.net.broadcast({
                 type: 'KILL',
@@ -5141,18 +5363,37 @@ class Game {
                 deathPos: [this.player.pos.x, this.player.pos.y, this.player.pos.z]
             });
         }
-        const ds = document.getElementById('deathScreen');
-        if (ds) {
-            this.ui._showPanel(ds);
+
+        const dc = document.getElementById('deathCam');
+        if (dc) {
+            const killerEl = document.getElementById('dcKiller');
+            const weaponEl = document.getElementById('dcWeapon');
+            const timerEl = document.getElementById('dcTimer');
+            if (killerEl) killerEl.textContent = this.lastAttackerName || 'ENVIRONMENT';
+            if (weaponEl) weaponEl.textContent = this.lastAttackerWeapon || 'ELIMINATED';
+
+            let remaining = 3.5;
+            if (timerEl) timerEl.textContent = `${remaining.toFixed(1)}s`;
+            this.ui._showPanel(dc);
+
+            this._respawnInterval = setInterval(() => {
+                remaining = Math.max(0, remaining - 0.1);
+                if (timerEl) timerEl.textContent = `${remaining.toFixed(1)}s`;
+                if (remaining <= 0) {
+                    clearInterval(this._respawnInterval);
+                    if (this.mode !== 'MENU') this.respawnPlayer();
+                }
+            }, 100);
         } else {
-            this.ui.showCenterMsg('OPERATOR KIA', 'RESPAWNING IN 2.5S...', 2400);
-            setTimeout(() => { if (this.mode !== 'MENU') this.respawnPlayer(); }, 2500);
+            this.ui.showCenterMsg('OPERATOR KIA', 'RESPAWNING IN 3.5S...', 3400);
+            setTimeout(() => { if (this.mode !== 'MENU') this.respawnPlayer(); }, 3500);
         }
     }
 
     respawnPlayer() {
-        const ds = document.getElementById('deathScreen');
-        if (ds) this.ui._hidePanel(ds);
+        clearInterval(this._respawnInterval);
+        const dc = document.getElementById('deathCam');
+        if (dc) this.ui._hidePanel(dc);
         const sp = this.world.getSafeSpawnPoint(this.net);
         this.player.reset(sp);
         if (this.mode === 'WAVE') {
