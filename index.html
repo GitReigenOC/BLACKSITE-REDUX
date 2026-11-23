@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+    <title>BLACKSITE-REDUX</title>
+    <link rel="icon"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2304060a'/%3E%3Crect x='6' y='6' width='52' height='52' fill='none' stroke='%23ff7a1a' stroke-width='2.5'/%3E%3Cpath d='M16 44 L32 16 L48 44 Z' fill='none' stroke='%23ff7a1a' stroke-width='2.5'/%3E%3Ccircle cx='32' cy='38' r='3' fill='%23ff7a1a'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <canvas id="c"></canvas>
+    <div id="flashOverlay"></div>
+
+    <!-- Multiplayer Waiting Lobby -->
+    <div id="waitingLobby">
+        <div id="lobbyRoomCodeBox">
+            <div class="lobby-room-label">ROOM CODE</div>
+            <div id="lobbyRoomCode">----</div>
+            <div class="lobby-room-hint">Share this code with friends to join</div>
+        </div>
+        <h1>WAITING FOR OPERATORS</h1>
+        <p id="lobbyStatus">1 / 4 READY</p>
+        <div id="lobbyPlayers"></div>
+        <div class="row">
+            <button class="btn" id="btnStartMatch" style="display:none">START MATCH</button>
+            <button class="btn ghost" id="btnLeaveLobby">LEAVE LOBBY</button>
+        </div>
+    </div>
+
+    <!-- Domain Clash Overlay -->
+    <div id="clashOverlay">
+        <div class="cl-title">DOMAIN CLASH</div>
+        <div class="cl-sub">OVERWHELM THE OPPONENT'S BARRIER</div>
+        <div class="cl-meter-wrap">
+            <div class="cl-labels"><span>YOU</span><span>RIVAL</span></div>
+            <div class="cl-meter"><i id="clashBarFill"></i></div>
+        </div>
+        <div class="cl-key">[ MASH SPACE ]</div>
+        <div class="cl-timer" id="clashTimer">6.0S</div>
+    </div>
+
+    <!-- Scoreboard (TAB) -->
+    <div id="leaderboard">
+        <div class="lbFrame">
+            <h2>SCOREBOARD</h2>
+            <table class="lbTable">
+                <thead>
+                    <tr>
+                        <th>RANK</th>
+                        <th>OPERATOR NAME</th>
+                        <th>KILLS</th>
+                        <th>DEATHS</th>
+                        <th>K/D RATIO</th>
+                        <th>STATUS</th>
+                    </tr>
+                </thead>
+                <tbody id="lbBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- In-Game HUD -->
+    <div id="hud" style="display:none">
+        <div id="bossBar">
+            <div id="bossName">OMEGA WARDEN // TITAN</div>
+            <div id="bossTrack">
+                <div id="bossFill"></div>
+            </div>
+        </div>
+
+        <div id="radarWrap">
+            <canvas id="radar" width="144" height="144"></canvas>
+        </div>
+
+        <div id="trainingBanner">
+            <div><b>[V]</b> SUKUNA VESSEL · <b>[H]</b> FULL HEAL + RESET · <b>[T]</b> SPAWN BOSS</div>
+            <div class="tg-controls">
+                <button type="button" class="tg-btn" id="btnTrainSpawn">+ Dummy [B]</button>
+                <button type="button" class="tg-btn" id="btnTrainMoving">+ Moving Dummy [N]</button>
+                <button type="button" class="tg-btn" id="btnTrainReset">Reset HP</button>
+                <button type="button" class="tg-btn danger" id="btnTrainClear">Clear Dummies [M]</button>
+            </div>
+        </div>
+
+        <div id="scope">
+            <div class="scope-backdrop"></div>
+            <div class="scope-ring">
+                <div class="scope-line-h"></div>
+                <div class="scope-line-v"></div>
+            </div>
+            <div class="scope-info">
+                <span>OPTIC MAGNIFICATION</span>
+                <span>ZOOM <b>6.0x</b></span>
+                <span>RANGE 400m</span>
+            </div>
+        </div>
+
+        <div id="damageFlash"></div>
+        <div id="damageArrow"></div>
+
+        <div id="crosshair">
+            <span class="ch t"></span>
+            <span class="ch b"></span>
+            <span class="ch l"></span>
+            <span class="ch r"></span>
+            <span class="ch dot"></span>
+        </div>
+
+        <div id="hitmarker"><span></span><span></span><span></span><span></span></div>
+
+        <div id="topInfo">
+            <div class="stat-pill">WAVE <b id="waveNum" class="mono">01</b></div>
+            <div class="stat-pill">HOSTILES <b id="aliveCount" class="mono">0</b></div>
+            <div class="stat-pill">KILLS <b id="killsCount" class="mono">0</b></div>
+            <div class="stat-pill">POINTS <b id="pointsCount" class="mono">0</b></div>
+        </div>
+
+        <div id="killFeed"></div>
+        <div id="skullPop">☠</div>
+        <div id="buffBadges"></div>
+        <div id="abilityHud"></div>
+
+        <div id="healthBlock">
+            <div class="vitals-row">
+                <span class="label">ARMOR</span>
+                <span id="shieldVal" class="mono shield-num">50</span>
+            </div>
+            <div class="bar shield-track">
+                <div id="shieldBar"></div>
+            </div>
+            <div class="vitals-row" style="margin-top:8px">
+                <span class="label">VITALS</span>
+                <span id="hpVal" class="mono hp-num">100</span>
+            </div>
+            <div class="bar">
+                <div id="hpBar"></div>
+            </div>
+        </div>
+
+        <div id="medkitBlock">
+            <div class="medkit-icon">✚</div>
+            <div class="medkit-info">
+                <div class="medkit-label">MEDKIT [E]</div>
+                <div id="medCount" class="medkit-count mono">1</div>
+            </div>
+        </div>
+
+        <div id="flashBlock">
+            <div class="medkit-icon">⚡</div>
+            <div class="medkit-info">
+                <div class="medkit-label">FLASH [G]</div>
+                <div id="flashCount" class="medkit-count mono">2</div>
+            </div>
+        </div>
+
+        <div id="ammoBlock">
+            <div id="wepName">MK-7 CARBINE</div>
+            <div class="ammoRow">
+                <span id="magVal" class="mono">30</span>
+                <span class="ammo-sep">/</span>
+                <span id="resVal" class="mono">240</span>
+            </div>
+            <div id="reloadMsg">RELOADING...</div>
+            <div id="slotList">
+                <div class="slot active" id="slot0">[1] <span class="s-name">MK-7</span></div>
+                <div class="slot" id="slot1">[2] <span class="s-name">SG-12</span></div>
+                <div class="slot" id="slot2">[3] <span class="s-name">RPG</span></div>
+                <div class="slot" id="slot3">[4] <span class="s-name">KNIFE</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Center Announcements -->
+    <div id="centerBanner">
+        <div id="centerMsg"></div>
+        <div id="cmSub"></div>
+    </div>
+
+    <!-- Main Menu -->
+    <div id="menu">
+        <div class="topbar">
+            <div class="brand">
+                <h1>BLACKSITE<span>-REDUX</span></h1>
+                <div class="rule"></div>
+                <div class="sub">CLASSIFIED COMBAT SIMULATION // BUILD 2.6.0</div>
+            </div>
+            <div class="meta">POINTS <b id="menuPoints" class="mono">0</b><br><span>SYSTEM READY</span></div>
+        </div>
+        <div class="mid">
+            <nav class="menu-nav">
+                <button id="btnSolo">Solo Wave<small>Endless survival · elites · boss waves</small></button>
+                <button id="btnTraining">Training Grounds<small>Sandbox · infinite ammo · Redliner Katana &amp; Sukuna</small></button>
+                <button id="btnMulti">Multiplayer<small>PeerJS WebRTC · Private + Public servers</small></button>
+                <button id="btnLoadout">Loadout<small>Weapons · camos · kit</small></button>
+                <button id="btnShop">Armory / Shop<small>Weapons · camos · mastery challenges</small></button>
+                <button id="btnMaps">Maps<small>Select reworked battlefield</small></button>
+                <button id="btnSettings">Settings<small>Operator suits · Audio · FOV · Sensitivity</small></button>
+            </nav>
+        </div>
+        <div class="footbar">
+            <div>WASD MOVE · <b>SHIFT</b> SPRINT · <b>SPACE</b> JUMP · <b>C</b> SLIDE · <b>E</b> MEDKIT · <b>G</b> FLASH</div>
+            <div><b>1-4</b> WEAPONS · <b>R</b> RELOAD · <b>F</b> ABILITY · <b>Z/X/V</b> STREAKS · <b>TAB</b> SCOREBOARD</div>
+        </div>
+    </div>
+
+    <!-- Pause Modal -->
+    <div id="pausePanel" class="modal-panel">
+        <div class="frame" style="width:min(480px,90vw)">
+            <h2>PAUSED</h2>
+            <div class="hintline">SIMULATION SUSPENDED</div>
+            <div class="row" style="flex-direction:column;gap:10px">
+                <button class="btn" id="btnResume">Resume</button>
+                <button class="btn ghost" id="btnRestart">Restart Match</button>
+                <button class="btn ghost" id="btnQuit">Return to Main Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="overPanel" class="modal-panel">
+        <div class="frame" style="width:min(540px,92vw)">
+            <h2>ELIMINATED</h2>
+            <div class="hintline">MISSION FAILED</div>
+            <div class="over-grid">
+                <div class="over-stat"><span>WAVE REACHED</span><b id="overWave" class="mono">1</b></div>
+                <div class="over-stat"><span>HOSTILES ELIMINATED</span><b id="overKills" class="mono">0</b></div>
+                <div class="over-stat"><span>POINTS EARNED</span><b id="overPts" class="mono accent">+0</b></div>
+            </div>
+            <div class="row">
+                <button class="btn" id="btnRetry">Retry</button>
+                <button class="btn ghost" id="btnOverMenu">Main Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loadout Overlay -->
+    <div id="loadoutPanel" class="overlay-panel hidden">
+        <div class="frame">
+            <h2>LOADOUT</h2>
+            <div class="hintline">CLICK AN UNLOCKED WEAPON TO EQUIP IT TO YOUR ACTIVE SLOT</div>
+            <div class="cardGrid" id="loadoutGrid"></div>
+            <div class="row" style="margin-top:26px">
+                <button class="btn ghost btn-close-panel">Back</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Armory / Shop Overlay -->
+    <div id="shopPanel" class="overlay-panel hidden">
+        <div class="frame">
+            <h2>ARMORY</h2>
+            <div class="hintline">SPEND COMBAT POINTS TO UNLOCK NEW WEAPONS</div>
+            <div style="margin-bottom:18px;font-size:14px;letter-spacing:3px">
+                BALANCE: <b class="accent mono" id="shopPoints">0</b> PTS
+            </div>
+            <div class="cardGrid" id="shopGrid"></div>
+            <div class="row" style="margin-top:26px">
+                <button class="btn ghost btn-close-panel">Back</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Multiplayer Overlay -->
+    <div id="mpPanel" class="overlay-panel hidden">
+        <div class="frame">
+            <h2>MULTIPLAYER (P2P)</h2>
+            <div class="hintline">SERVERLESS WEBRTC · WORKS ON GITHUB PAGES</div>
+            <div class="mpHint">
+                <b>PRIVATE:</b> Host a private lobby and share the generated room code with friends.<br>
+                <b>PUBLIC:</b> Claim a public slot so other operators can browse and join directly.
+            </div>
+            <div class="mp-config-row">
+                <div>
+                    <div class="field-label">GAMEMODE</div>
+                    <select id="hostMode" class="codeInput">
+                        <option value="PVP">Free-For-All (PVP)</option>
+                        <option value="COOP">Co-op Wave</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="field-label">MAX PLAYERS</div>
+                    <select id="hostMax" class="codeInput">
+                        <option value="2">2</option>
+                        <option value="4" selected>4</option>
+                        <option value="6">6</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="field-label">JOIN BY CODE</div>
+                    <div style="display:flex;gap:8px">
+                        <input id="joinCodeInput" class="codeInput" type="text" placeholder="BSR-XXXX" maxlength="20" />
+                        <button class="btn" id="btnJoinCode">Join</button>
+                    </div>
+                </div>
+            </div>
+            <div class="row" style="margin-bottom:16px">
+                <button class="btn" id="btnHostPriv">Host Private Server</button>
+                <button class="btn" id="btnHostPub">Host Public Server</button>
+                <button class="btn ghost" id="btnRefreshServers">↻ Refresh Public Servers</button>
+                <span id="publicStatus" style="font-size:11px;letter-spacing:2px;color:#5f6f82;align-self:center">Click refresh to scan</span>
+            </div>
+            <table class="srvTable">
+                <thead>
+                    <tr>
+                        <th>SERVER</th>
+                        <th>MODE</th>
+                        <th>MAP</th>
+                        <th>PLAYERS</th>
+                        <th>PING</th>
+                    </tr>
+                </thead>
+                <tbody id="srvBody">
+                    <tr>
+                        <td colspan="5" class="offline">No public servers detected. Host one or click Refresh.</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="row" style="margin-top:20px">
+                <button class="btn ghost btn-close-panel">Back</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Maps Overlay -->
+    <div id="mapsPanel" class="overlay-panel hidden">
+        <div class="frame">
+            <h2>SELECT MAP</h2>
+            <div class="hintline">CHOOSE BATTLEFIELD LAYOUT</div>
+            <div class="cardGrid" id="mapsGrid"></div>
+            <div class="row" style="margin-top:26px">
+                <button class="btn ghost btn-close-panel">Back</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Overlay -->
+    <div id="settingsPanel" class="overlay-panel hidden">
+        <div class="frame" style="width:min(740px,92vw)">
+            <h2>SETTINGS</h2>
+            <div class="hintline">OPERATOR IDENTITY · AUDIO · INPUT · FIELD OF VIEW</div>
+            <div class="settingsGrid">
+                <label>DISPLAY NAME</label><input id="setPlayerName" class="codeInput" type="text" maxlength="16"
+                    style="padding:8px;font-size:12px" /><span></span>
+                <label>MASTER VOLUME</label><input id="setVol" type="range" min="0" max="1" step="0.02"
+                    value="0.6" /><span id="setVolVal">0.6</span>
+                <label>MUSIC VOLUME</label><input id="setMusic" type="range" min="0" max="1" step="0.02"
+                    value="0.4" /><span id="setMusicVal">0.4</span>
+                <label>FIELD OF VIEW</label><input id="setFov" type="range" min="70" max="120" step="1"
+                    value="90" /><span id="setFovVal">90°</span>
+                <label>MOUSE SENSITIVITY</label><input id="setSens" type="range" min="0.3" max="3" step="0.05"
+                    value="1" /><span id="setSensVal">1x</span>
+                <label>SCOPE SENSITIVITY</label><input id="setScopeSens" type="range" min="0.1" max="2" step="0.05"
+                    value="0.8" /><span id="setScopeSensVal">0.8x</span>
+                <label>INVERT Y</label><input id="setInvert" type="checkbox" /><span></span>
+            </div>
+            <div class="row" style="margin-top:26px;justify-content:space-between">
+                <button class="btn ghost btn-close-panel">Back</button>
+                <button class="btn ghost" id="btnResetSave" style="border-color:#ff3b3b;color:#ff3b3b">RESET SAVE DATA</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.1/build/three.module.js" } }
+    </script>
+    <script type="module" src="script.js"></script>
+</body>
+
+</html>
